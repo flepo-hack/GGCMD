@@ -56,7 +56,7 @@ uicorner.Name = "UICorner"
 uicorner.CornerRadius = UDim.new(0, 3)
 uicorner.Parent = remotepath
 
-remotepath.Parent = quirkycmd
+remotepath.Parent = ggcmd
 
 local cmdbox = Instance.new("TextBox")
 cmdbox.Name = "cmdBox"
@@ -79,7 +79,7 @@ uitextsizeconstraint.Name = "UITextSizeConstraint"
 uitextsizeconstraint.MaxTextSize = 18
 uitextsizeconstraint.Parent = cmdbox
 
-cmdbox.Parent = quirkycmd
+cmdbox.Parent = ggcmd
 
 local mobileopen = Instance.new("TextButton")
 mobileopen.Name = "mobileOpen"
@@ -111,7 +111,7 @@ cmds.BorderColor3 = Color3.fromRGB(0, 0, 0)
 cmds.BorderSizePixel = 0
 cmds.Position = UDim2.fromScale(0.446, 0.305)
 cmds.Size = UDim2.fromScale(0.108, 0.389)
-cmds.Parent = quirkycmd
+cmds.Parent = ggcmd
 
 local cmdlist = Instance.new("ScrollingFrame")
 cmdlist.Name = "cmdList"
