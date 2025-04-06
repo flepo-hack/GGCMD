@@ -1,3 +1,6 @@
+--{ GGCMD made by Googlepoika (discord coming soon) }--
+-- ty Destiny for adding more exec support 
+-- Discord server for working games: coming soon
 local cloneref = cloneref or function(a) return a end
 local coreGui = cloneref(game:GetService("CoreGui"))
 local players = cloneref(game:GetService("Players"))
