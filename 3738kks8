@@ -1,6 +1,6 @@
---{ QuirkyCMD made by quirky anime boy (smokedoutlocedout on discord) }--
+--{ GGCMD made by Googlepoika (discord coming soon) }--
 -- ty Destiny for adding more exec support <3
--- Discord server for working games: https://discord.gg/aG6KdRje3x
+-- Discord server is coming soon
 local cloneref = cloneref or function(a) return a end
 local coreGui = cloneref(game:GetService("CoreGui"))
 local players = cloneref(game:GetService("Players"))
@@ -29,12 +29,12 @@ local gethui = gethui or function()
 	return folder
 end
 
-local quirkycmd = Instance.new("ScreenGui", gethui())
-quirkycmd.Name = "quirkyCMD"
-quirkycmd.IgnoreGuiInset = true
-quirkycmd.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
-quirkycmd.ResetOnSpawn = false
-quirkycmd.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local ggcmd = Instance.new("ScreenGui", gethui())
+ggcmd.Name = "GGCMD"
+ggcmd.IgnoreGuiInset = true
+ggcmd.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+ggcmd.ResetOnSpawn = false
+ggcmd.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local remotepath = Instance.new("TextLabel")
 remotepath.Name = "remotepath"
@@ -101,7 +101,7 @@ uicorner1.Name = "UICorner"
 uicorner1.CornerRadius = UDim.new(0, 3)
 uicorner1.Parent = mobileopen
 
-mobileopen.Parent = quirkycmd
+mobileopen.Parent = ggcmd
 
 local cmds = Instance.new("Frame")
 cmds.Name = "cmds"
@@ -128,7 +128,7 @@ cmdlist.Size = UDim2.fromScale(1, 0.943)
 local template = Instance.new("TextLabel")
 template.Name = "template"
 template.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json")
-template.Text = "error occured, dm quirky"
+template.Text = "error occured, dm me"
 template.TextColor3 = Color3.fromRGB(200, 200, 200)
 template.TextScaled = true
 template.TextSize = 14
@@ -177,7 +177,7 @@ local rStorage = game:GetService("ReplicatedStorage")
 local players = game:GetService("Players")
 local localPlayer = players.LocalPlayer
 
-local gui = quirkycmd or localPlayer:FindFirstChildOfClass("PlayerGui"):WaitForChild("quirkyCMD")
+local gui = ggcmd or localPlayer:FindFirstChildOfClass("PlayerGui"):WaitForChild("GGCMD")
 local gethui = gethui or function() return localPlayer:FindFirstChildOfClass("PlayerGui") end
 local box = gui:WaitForChild("cmdBox")
 local mobileButton = gui:WaitForChild("mobileOpen")
