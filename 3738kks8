@@ -1,4 +1,4 @@
---{ GGCMD made by Googlepoika ( on roblox ) }--
+--{ GGCMD made by Googlepoika }--
 -- ty Destiny for adding more exec support <3
 -- Discord server for working games: https://discord.gg/aG6KdRje3x
 local cloneref = cloneref or function(a) return a end
