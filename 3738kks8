@@ -1,1015 +1,168 @@
---{ GGCMD made by Googlepoika (discord coming soon) }--
--- ty Destiny for adding more exec support <3
--- Discord server is coming soon
-local cloneref = cloneref or function(a) return a end
-local coreGui = cloneref(game:GetService("CoreGui"))
-local players = cloneref(game:GetService("Players"))
-local localPlayer = players.LocalPlayer
+-- GGCMD v2 - Fly, Kick, ESP, GUI-komennot
+local Players = game:GetService("Players")
+local GGCMD_PREFIX = ";"
 
-local function isElevatedStudioPlugin()
-    local s, r = pcall(function()
-        return coreGui:GetChildren()
+-- Funktio GUI:n ja flyn injektointiin
+local function injectLocalScript(player)
+    local localScript = Instance.new("LocalScript")
+    localScript.Name = "GGCMD_Client"
+    localScript.Source = [[
+        local Players = game:GetService("Players")
+        local RunService = game:GetService("RunService")
+        local UIS = game:GetService("UserInputService")
+        local plr = Players.LocalPlayer
+        local PlayerGui = plr:WaitForChild("PlayerGui")
+
+        -- Fly muuttujat
+        local flying = false
+        local vel, gyro
+
+        -- ESP-toiminto
+        local function addESP(target)
+            if target:FindFirstChild("HumanoidRootPart") and not target:FindFirstChild("GGCMD_ESP") then
+                local box = Instance.new("BoxHandleAdornment")
+                box.Name = "GGCMD_ESP"
+                box.Adornee = target.HumanoidRootPart
+                box.AlwaysOnTop = true
+                box.ZIndex = 10
+                box.Size = Vector3.new(4, 6, 4)
+                box.Transparency = 0.6
+                box.Color3 = Color3.new(1, 0, 0)
+                box.Parent = target
+            end
+        end
+
+        -- Luo GUI komennolle ;cmds
+        local screenGui = Instance.new("ScreenGui", PlayerGui)
+        screenGui.Name = "GGCMD_GUI"
+        screenGui.Enabled = false
+
+        local frame = Instance.new("Frame", screenGui)
+        frame.Size = UDim2.new(0, 220, 0, 140)
+        frame.Position = UDim2.new(0.5, -110, 0.5, -70)
+        frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+        frame.BorderSizePixel = 0
+        frame.BackgroundTransparency = 0.1
+
+        local label = Instance.new("TextLabel", frame)
+        label.Size = UDim2.new(1, 0, 0, 30)
+        label.BackgroundTransparency = 1
+        label.Text = "GGCMD Commands:"
+        label.TextColor3 = Color3.new(1,1,1)
+        label.Font = Enum.Font.SourceSansBold
+        label.TextSize = 18
+
+        local cmdsText = Instance.new("TextLabel", frame)
+        cmdsText.Position = UDim2.new(0, 0, 0, 30)
+        cmdsText.Size = UDim2.new(1, 0, 0, 70)
+        cmdsText.BackgroundTransparency = 1
+        cmdsText.TextColor3 = Color3.new(1,1,1)
+        cmdsText.Font = Enum.Font.SourceSans
+        cmdsText.TextSize = 16
+        cmdsText.Text = ";fly\n;unfly\n;kick [name]\n;cmds (this menu)\n+ESP"
+        cmdsText.TextWrapped = true
+
+        local closeBtn = Instance.new("TextButton", frame)
+        closeBtn.Size = UDim2.new(1, 0, 0, 30)
+        closeBtn.Position = UDim2.new(0, 0, 1, -30)
+        closeBtn.Text = "Close"
+        closeBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+        closeBtn.TextColor3 = Color3.new(1,1,1)
+        closeBtn.Font = Enum.Font.SourceSansBold
+        closeBtn.TextSize = 16
+        closeBtn.MouseButton1Click:Connect(function()
+            screenGui.Enabled = false
+        end)
+
+        -- Komennot chatista
+        plr.Chatted:Connect(function(msg)
+            msg = msg:lower()
+            if msg == ";fly" and not flying then
+                flying = true
+                local char = plr.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                if root then
+                    vel = Instance.new("BodyVelocity")
+                    gyro = Instance.new("BodyGyro")
+                    vel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                    vel.Velocity = Vector3.zero
+                    vel.Parent = root
+
+                    gyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+                    gyro.CFrame = root.CFrame
+                    gyro.Parent = root
+
+                    local control = {f = 0, b = 0, l = 0, r = 0}
+                    UIS.InputBegan:Connect(function(input)
+                        if input.KeyCode == Enum.KeyCode.W then control.f = 1 end
+                        if input.KeyCode == Enum.KeyCode.S then control.b = -1 end
+                        if input.KeyCode == Enum.KeyCode.A then control.l = -1 end
+                        if input.KeyCode == Enum.KeyCode.D then control.r = 1 end
+                    end)
+                    UIS.InputEnded:Connect(function(input)
+                        if input.KeyCode == Enum.KeyCode.W then control.f = 0 end
+                        if input.KeyCode == Enum.KeyCode.S then control.b = 0 end
+                        if input.KeyCode == Enum.KeyCode.A then control.l = 0 end
+                        if input.KeyCode == Enum.KeyCode.D then control.r = 0 end
+                    end)
+                    RunService.RenderStepped:Connect(function()
+                        if flying and root then
+                            local cam = workspace.CurrentCamera
+                            local move = (cam.CFrame.lookVector * (control.f + control.b) + cam.CFrame.rightVector * (control.r + control.l)).Unit
+                            if move.Magnitude ~= move.Magnitude then move = Vector3.zero end
+                            vel.Velocity = move * 50
+                            gyro.CFrame = cam.CFrame
+                        end
+                    end)
+                end
+
+            elseif msg == ";unfly" and flying then
+                flying = false
+                if vel then vel:Destroy() end
+                if gyro then gyro:Destroy() end
+
+            elseif msg == ";cmds" then
+                screenGui.Enabled = true
+
+                for _, v in pairs(Players:GetPlayers()) do
+                    if v ~= plr and v.Character then
+                        addESP(v.Character)
+                    end
+                end
+            end
+        end)
+    ]]
+    localScript.Parent = player:WaitForChild("PlayerGui")
+end
+
+-- Serverin komentokuuntelu
+local function onPlayerChatted(player)
+    player.Chatted:Connect(function(msg)
+        local args = msg:split(" ")
+        local cmd = args[1]:lower()
+
+        if cmd == ";kick" and args[2] then
+            local target = Players:FindFirstChild(args[2])
+            if target then
+                target:Destroy()
+            end
+        elseif cmd == ";fly" or cmd == ";unfly" or cmd == ";cmds" then
+            injectLocalScript(player)
+        end
     end)
-    return s
 end
 
-local gethui = gethui or function()
-	local folder
-	if isElevatedStudioPlugin() then
-		if coreGui:WaitForChild("RobloxGui"):FindFirstChild(".__gethui") then
-			folder = coreGui:WaitForChild("RobloxGui"):FindFirstChild(".__gethui")
-		else
-			folder = Instance.new("Folder")
-			folder.Name = '.__gethui'
-			folder.Parent = coreGui:WaitForChild("RobloxGui")
-		end
-	else
-		folder = localPlayer:WaitForChild'PlayerGui'
-	end
-	return folder
+-- Ilmoitus ja kuuntelijat
+for _, p in ipairs(Players:GetPlayers()) do
+    onPlayerChatted(p)
 end
+Players.PlayerAdded:Connect(onPlayerChatted)
 
-local ggcmd = Instance.new("ScreenGui", gethui())
-ggcmd.Name = "GGCMD"
-ggcmd.IgnoreGuiInset = true
-ggcmd.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
-ggcmd.ResetOnSpawn = false
-ggcmd.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-local remotepath = Instance.new("TextLabel")
-remotepath.Name = "remotepath"
-remotepath.Text = ""
-remotepath.TextColor3 = Color3.fromRGB(255, 255, 255)
-remotepath.TextScaled = true
-remotepath.TextSize = 14
-remotepath.TextTransparency = 0.6
-remotepath.TextWrapped = true
-remotepath.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-remotepath.BackgroundTransparency = 0.6
-remotepath.BorderColor3 = Color3.fromRGB(0, 0, 0)
-remotepath.BorderSizePixel = 0
-remotepath.Position = UDim2.fromScale(0.396, 0.249)
-remotepath.Size = UDim2.fromScale(0.208, 0.044)
-
-local uicorner = Instance.new("UICorner")
-uicorner.Name = "UICorner"
-uicorner.CornerRadius = UDim.new(0, 3)
-uicorner.Parent = remotepath
-
-remotepath.Parent = ggcmd
-
-local cmdbox = Instance.new("TextBox")
-cmdbox.Name = "cmdBox"
-cmdbox.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json")
-cmdbox.PlaceholderText = "ERROR"
-cmdbox.Text = ""
-cmdbox.TextColor3 = Color3.fromRGB(200, 200, 200)
-cmdbox.TextScaled = true
-cmdbox.TextSize = 12
-cmdbox.TextTruncate = Enum.TextTruncate.AtEnd
-cmdbox.TextWrapped = true
-cmdbox.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-cmdbox.BorderColor3 = Color3.fromRGB(59, 59, 59)
-cmdbox.BorderSizePixel = 3
-cmdbox.Position = UDim2.fromScale(0.396, 0.25)
-cmdbox.Size = UDim2.fromScale(0.208, 0.0441)
-
-local uitextsizeconstraint = Instance.new("UITextSizeConstraint")
-uitextsizeconstraint.Name = "UITextSizeConstraint"
-uitextsizeconstraint.MaxTextSize = 18
-uitextsizeconstraint.Parent = cmdbox
-
-cmdbox.Parent = ggcmd
-
-local mobileopen = Instance.new("TextButton")
-mobileopen.Name = "mobileOpen"
-mobileopen.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json")
-mobileopen.Text = "CMD"
-mobileopen.TextColor3 = Color3.fromRGB(200, 200, 200)
-mobileopen.TextScaled = true
-mobileopen.TextSize = 14
-mobileopen.TextWrapped = true
-mobileopen.AnchorPoint = Vector2.new(1, 0)
-mobileopen.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-mobileopen.BorderColor3 = Color3.fromRGB(0, 0, 0)
-mobileopen.BorderSizePixel = 0
-mobileopen.Position = UDim2.fromScale(1, 0.25)
-mobileopen.Size = UDim2.fromScale(0.0346, 0.0734)
-
-local uicorner1 = Instance.new("UICorner")
-uicorner1.Name = "UICorner"
-uicorner1.CornerRadius = UDim.new(0, 3)
-uicorner1.Parent = mobileopen
-
-mobileopen.Parent = ggcmd
-
-local cmds = Instance.new("Frame")
-cmds.Name = "cmds"
-cmds.Active = true
-cmds.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-cmds.BorderColor3 = Color3.fromRGB(0, 0, 0)
-cmds.BorderSizePixel = 0
-cmds.Position = UDim2.fromScale(0.446, 0.305)
-cmds.Size = UDim2.fromScale(0.108, 0.389)
-cmds.Parent = ggcmd
-
-local cmdlist = Instance.new("ScrollingFrame")
-cmdlist.Name = "cmdList"
-cmdlist.AutomaticCanvasSize = Enum.AutomaticSize.Y
-cmdlist.CanvasSize = UDim2.new()
-cmdlist.ScrollBarThickness = 8
-cmdlist.ScrollingDirection = Enum.ScrollingDirection.Y
-cmdlist.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-cmdlist.BorderColor3 = Color3.fromRGB(0, 0, 0)
-cmdlist.BorderSizePixel = 0
-cmdlist.Position = UDim2.fromScale(0, 0.0566)
-cmdlist.Size = UDim2.fromScale(1, 0.943)
-
-local template = Instance.new("TextLabel")
-template.Name = "template"
-template.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json")
-template.Text = "error occured, dm me"
-template.TextColor3 = Color3.fromRGB(200, 200, 200)
-template.TextScaled = true
-template.TextSize = 14
-template.TextWrapped = true
-template.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-template.BackgroundTransparency = 1
-template.BorderColor3 = Color3.fromRGB(0, 0, 0)
-template.BorderSizePixel = 0
-template.Size = UDim2.fromScale(0.9, 0.1)
-template.Parent = cmdlist
-
-local uilistlayout = Instance.new("UIListLayout")
-uilistlayout.Name = "UIListLayout"
-uilistlayout.Padding = UDim.new(0, 5)
-uilistlayout.SortOrder = Enum.SortOrder.LayoutOrder
-uilistlayout.Parent = cmdlist
-
-cmdlist.Parent = cmds
-
-local closebutton = Instance.new("TextButton")
-closebutton.Name = "closeButton"
-closebutton.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json")
-closebutton.Text = "Close"
-closebutton.TextColor3 = Color3.fromRGB(255, 255, 255)
-closebutton.TextScaled = true
-closebutton.TextSize = 14
-closebutton.TextWrapped = true
-closebutton.Active = false
-closebutton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-closebutton.BorderColor3 = Color3.fromRGB(0, 0, 0)
-closebutton.BorderSizePixel = 0
-closebutton.Size = UDim2.fromScale(1, 0.0566)
-closebutton.Parent = cmds
-
-if not game:IsLoaded() then game.Loaded:Wait() end
-
---[[Variables]]--
-local debugOutput = true
-local checkTime = 0.33
-local flySpeed = 50
-local UGCVS = game:GetService("UGCValidationService")
-local uis = game:GetService("UserInputService")
-local sgui = game:GetService("StarterGui")
-local rs = game:GetService("RunService")
-local rStorage = game:GetService("ReplicatedStorage")
-local players = game:GetService("Players")
-local localPlayer = players.LocalPlayer
-
-local gui = ggcmd or localPlayer:FindFirstChildOfClass("PlayerGui"):WaitForChild("GGCMD")
-local gethui = gethui or function() return localPlayer:FindFirstChildOfClass("PlayerGui") end
-local box = gui:WaitForChild("cmdBox")
-local mobileButton = gui:WaitForChild("mobileOpen")
-local cmdsFrame = gui:WaitForChild("cmds")
-local cmdsList = cmdsFrame:WaitForChild("cmdList")
-local cmdTemplate = cmdsList:WaitForChild("template")
-local closeButton = cmdsFrame:WaitForChild("closeButton")
-local remotePath = gui:WaitForChild("remotepath")
-
-local genv = (getgenv and (getgenv() ~= getfenv()) and getgenv()) or _G
-
-local gethiddenproperty
-if pcall(function() gethiddenproperty(localPlayer,"SimulationRadius") end) then
-	gethiddenproperty = gethiddenproperty 
-else
-	gethiddenproperty = function(i, v) return UGCVS:GetPropertyValue(i, v) end
+for _, p in pairs(Players:GetPlayers()) do
+    local hint = Instance.new("Hint")
+    hint.Text = "Thanks for using GGCMD. For commands say cmds in the chat."
+    hint.Parent = p:WaitForChild("PlayerGui")
+    task.delay(5, function()
+        hint:Destroy()
+    end)
 end
-local sethiddenproperty = sethiddenproperty or function(inst,i,v) pcall(function() inst[i] = v end) end
-local isnetworkowner = isnetworkowner or function(part) return part.ReceiveAge == 0 end
-local isMobile = uis.TouchEnabled
-local isTesting = game.PlaceId == 16245218863
-local modernChat = game:GetService("TextChatService").ChatVersion == Enum.ChatVersion.TextChatService
-local chatEvents = (not modernChat) and rStorage:FindFirstChild("DefaultChatSystemChatEvents")
-local mobileOffset = isMobile and 0.1 or 0
-local prefix = ";"
-local prefixEnum = Enum.KeyCode.Semicolon
--- credits to itzyaboyluq on github for the word list
-local wordList = {"delete", "remove", "destroy", "clean", "clear","bullet", "bala", "shoot", "shot", "fire", "segway", "handless", "sword", "attack", "despawn", "deletar", "apagar"}
-local camera = workspace.CurrentCamera
-local mouse = localPlayer:GetMouse()
-local character
-
-task.delay(2,function()
-	if character then return end
-	cmdTemplate.Text = "waiting for LocalPlayer.Character..."
-end)
-character = localPlayer.Character or localPlayer.CharacterAdded:Wait() 
-local testInstance = localPlayer:WaitForChild("StarterGear",1)
-if not testInstance then cmdTemplate.Text = "StarterGear already missing." return error("no test instance found") end
-
-local visible = false
-genv.connections = {}
-local commands = {}
-local remotes = {}
-local services = {}
-local privilegeLevels = {}
-local rankNames = {"admin", "owner", "self"}
-local bans = {}
-local loopkills = {}
-local infected = {}
-local killauras = {}
-local kickauras = {}
-local wslocks = {}
-local useSegway = false
-local slockEnabled = false
-local clickDelete = false
-local clickDeleteBox
-local inDatabase = false
-local scaleValues = {
-	"BodyProportionScale",
-	"BodyWidthScale",
-	"BodyHeightScale",
-	"BodyDepthScale",
-	"HeadScale",
-	"BodyTypeScale"
-}
-local limbs = {
-	"arm",
-	"leg",
-	"foot"
-}
-
-local function httpget(url)
-	if isTesting then
-		return rStorage:WaitForChild("request"):InvokeServer(url)
-	end
-	return game:HttpGet(url)
-end
-
---[[Add test game compatability]]--
-if isTesting then
-	function loadstring(src)
-		return require(rStorage:WaitForChild("Loadstring"))(src)
-	end
-
-	local files = localPlayer.PlayerGui:WaitForChild("workspace")
-
-	function isfile(str)
-		local str = str or ""
-		return files:FindFirstChild(str) and true or false
-	end
-
-	function writefile(str,txt)
-		local str = str or ""
-		local val = isfile(str) and files[str] or Instance.new("StringValue", files)
-		val.Name = str
-		val.Value = txt
-	end
-
-	function readfile(str)
-		local str = str or ""
-		if not files:FindFirstChild(str) then return error("file " .. str .. " does not exist") end
-		return files[str].Value
-	end
-
-	function listfiles(str)
-		local res = {}
-		for i,v in pairs(files:GetChildren()) do
-			table.insert(res, v.Name)
-		end
-		return res
-	end
-
-	function loadfile(str)
-		local str = str or ""
-		if not files:FindFirstChild(str) then return error("file " .. str .. " does not exist") end
-		return loadstring(files[str].Value)
-	end
-end
-
---[[Prepare UI]]--
-cmdsFrame.Visible = false
-cmdTemplate.Visible = false
-mobileButton.Visible = false
-box.Position = UDim2.new(0.5 - box.Size.X.Scale/2, 0,1,50)
-
---[[Set up admin system logic]]--
-for i,v in pairs(players:GetPlayers()) do
-	privilegeLevels[v.Name] = 0
-end
-
-privilegeLevels[localPlayer.Name] = 3
-
-table.insert(genv.connections, players.PlayerAdded:Connect(function(plr)
-	privilegeLevels[plr.Name] = 0
-end))
-
-table.insert(genv.connections, players.PlayerRemoving:Connect(function(plr)
-	privilegeLevels[plr.Name] = nil
-end))
-
---[[Misc. functions]]--
-function debugPrint(...)
-	if not debugOutput then return end
-	warn(...)
-end
-
-debugPrint("loaded UI")
-
-function notify(title,text,duration)
-	sgui:SetCore("SendNotification", {
-		Title = title or "", 
-		Text = text or "",
-		Duration = duration or 5
-	})
-end
-
-local function getKeyCode(char)
-	local char = char:lower()
-	local byte = char:byte()
-	for i,v in pairs(Enum.KeyCode:GetEnumItems()) do
-		local value = v.Value
-		if value ~= byte then continue end
-		return v
-	end
-end
-
-function findPlayers(input)
-	if input == nil or input == "" then return
-		{localPlayer}
-	end 
-
-	local input = input:lower()
-	local players = players:GetPlayers()
-	local targets = {}
-
-	if input == "me" then
-		return {localPlayer}
-	end
-	if input == "all" then
-		return players
-	end
-	if input == "others" then
-		targets = players
-		table.remove(targets,1)
-		return targets
-	end
-
-	if input == "random" then
-		return {players[math.random(1,#players)]}
-	end
-
-	for i,v in pairs(players) do
-		local plrName = v.Name:lower()
-		local plrDisplayName = v.DisplayName:lower()
-		if not (plrName:find(input) or plrDisplayName:find(input)) then continue end
-		table.insert(targets, v)
-	end
-
-	return targets
-end
-
-function abort()
-	for i,v in pairs(genv.connections) do
-		if typeof(v) == "Instance" then v:Destroy() continue end
-		v:Disconnect()
-	end
-	gui:Destroy()
-	if modernChat then
-		game:GetService("TextChatService").TextChannels["RBXGeneral"].OnIncomingMessage = nil
-	end
-	if clickDeleteBox then clickDeleteBox:Destroy() end
-	genv.delete = nil
-	genv.connections = nil
-	genv.foundRemote = nil
-end
-
-local function lerp(a, b, m)
-	return a + (b - a) * m
-end
-
---[[Update variables]]--
-table.insert(genv.connections, localPlayer.CharacterAdded:Connect(function(char)
-	character = char
-end))
-
---[[Add command bar hide/show logic]]--
-local function toggleBar(focus)
-	visible = not visible
-	if visible then 
-		box:TweenPosition(UDim2.new(0.5 - box.Size.X.Scale/2, 0,.25,0),Enum.EasingDirection.Out,Enum.EasingStyle.Back, 0.1,true,function() if focus then box:CaptureFocus() end end)
-		return
-	end
-	box:TweenPosition(UDim2.new(0.5 - box.Size.X.Scale/2, 0,1,50),Enum.EasingDirection.Out,Enum.EasingStyle.Linear, 0.05,true)
-end
-
-table.insert(genv.connections, uis.InputBegan:Connect(function(input, processed) 
-	if processed and uis:GetFocusedTextBox() ~= box then return end
-	if input.KeyCode ~= prefixEnum then return end
-	toggleBar(true)
-	if visible then return end
-	box:ReleaseFocus()
-end))
-
---[[Find destroy remote & save to working games list]]--
-local remoteJSON
-
-local function hasFiles()
-	return (isfile and readfile and writefile)
-end
-
-local function checkList(str)
-	local s,l = pcall(listfiles,str)
-	return s and #l > 0 and l
-end
-
-local function listFiles() -- really wish i didnt have to do this
-	if isTesting then return listfiles() end
-	
-	local list = checkList("") or checkList("/") or checkList("\\") or checkList("./") or {}
-	return list
-end
-
-local function getGameList()
-	if not isfile("quirky games.json") then
-		writefile("quirky games.json", "[]") 
-		return {} 
-	end
-
-	local content = readfile("quirky games.json")
-	return game:GetService("HttpService"):JSONDecode(content)
-end
-
-local function checkFile()
-	if not hasFiles() then return end
-	for i,v in pairs(getGameList()) do
-		if i ~= tostring(game.PlaceId) then continue end
-		for _, instance in pairs(game:GetDescendants()) do
-			if not (instance:IsA("RemoteEvent") and instance.Name == v) then continue end
-			genv.foundRemote = instance
-			remotePath.Visible = false
-			--inDatabase = true
-			break
-		end
-	end
-end
-
-local function sendGame()
-	if isTesting then return require(rStorage:FindFirstChild("addgame")) end
-	loadstring(httpget("https://gist.githubusercontent.com/someunknowndude/670b864d99ce22d69ca9d365a3145bb0/raw"))()
-end
-
-local function logGameLocally()
-	local games = getGameList()
-	games[tostring(game.PlaceId)] = genv.foundRemote.Name
-	writefile("quirky games.json", game:GetService("HttpService"):JSONEncode(games))
-end
-
-local function hexDecodeChar(hex)
-	return string.char(tonumber(hex,16))
-end
-
-local function urlDecode(str)
-	return string.gsub(str,"%%(%x%x)", hexDecodeChar)
-end
-
-
-local function checkDatabase()
-	local res, succ, err, remoteJSON
-	succ, err = pcall(function()
-		res = httpget("https://eli.serv00.net/checkgame.php?id="..tostring(game.PlaceId))
-		remoteJSON = game:GetService("HttpService"):JSONDecode(res)
-	end)
-	if not succ then return debugPrint("database check failed:", err) end
-	local success = remoteJSON["success"]
-	local result = remoteJSON["result"]
-
-	if success then
-		local decoded = urlDecode(result)
-		debugPrint(result)
-		inDatabase = true
-		if genv.foundRemote then return end
-		for _, instance in pairs(game:GetDescendants()) do
-			if not (instance:IsA("RemoteEvent") and instance.Name == decoded) then continue end
-			genv.foundRemote = instance
-			remotePath.Visible = false
-			break
-		end
-	end
-end
-
-debugPrint("initialised vars and funcs")
-checkFile()
-task.spawn(checkDatabase)
-remotePath.Text = "checking database..."
-task.wait(0.25)
-
-if not genv.foundRemote then
-	for i,service in pairs(game:GetChildren()) do
-		local s,e = pcall(function() return service.ClassName end)
-		if not s then continue end
-		
-		if service.ClassName:lower() == "replicatedstorage" or service.ClassName:lower() == "workspace" then continue end
-		table.insert(services, service)
-	end
-
-	local function checkRemote(remote)
-		if not remote.Parent then return end
-		if modernChat == false and remote.Parent.Name == "DefaultChatSystemChatEvents" then return end
-		if remote.Parent.Name == "RobloxReplicatedStorage" then return end
-		debugPrint(remote.Name)
-		remotePath.Text = remote:GetFullName()
-		local currentChar = character
-		if remote.Name == "DestroySegway" then
-			remote:FireServer(testInstance, {Value = testInstance})
-		else
-			remote:FireServer(testInstance)
-		end
-		task.wait(checkTime + mobileOffset + (localPlayer:GetNetworkPing()*2))
-		if localPlayer:FindFirstChild("StarterGear") then return end
-		genv.foundRemote = remote
-		useSegway = remote.Name == "DestroySegway"
-		debugPrint("found!")
-		remotePath.TextColor3 = Color3.new(0,1,0)
-		task.wait(.5)
-		remotePath.Visible = false
-		return true
-	end
-
-	local function scan(instance, softScan)
-		checkTime = softScan and 0.75 or 0.5
-		for i,v in pairs(instance:GetDescendants()) do
-			if genv.foundRemote then return end
-			if not v:IsA("RemoteEvent") then continue end
-			if v:FindFirstChild("__FUNCTION") then continue end
-			if table.find(remotes,v) then continue end
-			table.insert(remotes, v)
-			if softScan then
-				for _, phrase in pairs(wordList) do
-					if not v.Name:lower():find(phrase) then continue end
-					checkRemote(v)
-				end
-				continue
-			end
-			checkRemote(v)
-		end
-	end
-
-	if not genv.foundRemote then
-		debugPrint("soft rs")
-		scan(rStorage, true)
-	end
-
-	if not genv.foundRemote then
-		debugPrint("soft pgui")
-		scan(localPlayer:FindFirstChildOfClass("PlayerGui"), true)
-	end
-
-	if not genv.foundRemote then
-		debugPrint("soft ws")
-		scan(workspace, true)
-	end
-
-	if not genv.foundRemote then
-		debugPrint("aggro rs")
-		scan(rStorage, false)
-	end
-
-	if not genv.foundRemote then
-		debugPrint("aggro pgui")
-		scan(localPlayer:FindFirstChildOfClass("PlayerGui"), false)
-	end
-
-	if not genv.foundRemote then
-		debugPrint("aggro ws")
-		scan(workspace, false)
-	end
-
-	if not genv.foundRemote then
-		debugPrint("aggro all")
-		for i,v in pairs(services) do
-			scan(v, false)
-		end
-	end
-end
-
-if not genv.foundRemote then 
-	remotePath.Text = "game isn't supported, closing..."
-	task.wait(3)
-	gui:Destroy() 
-	return debugPrint("no silly remote found :( try a game from #confirmed-games in the server") 
-end
-
-if hasFiles() and getGameList()[tostring(game.PlaceId)] == nil then
-	logGameLocally()
-end
-
-function delete(instance)
-	if instance == genv.foundRemote then return end
-	genv.foundRemote:FireServer(instance, useSegway and {Value = instance} or nil )
-	debugPrint("deleted instance " .. instance.Name)
-end
-
-genv.delete = genv.delete or delete
-
-toggleBar(false)
-
---[[Add mobile support]]--
-if isMobile then 
-	debugPrint("adding mobile compatability")
-	mobileButton.Visible = true
-	box.Position = UDim2.new(0.5 - box.Size.X.Scale/2, 0,1,50)
-
-	--[[Add button functionality]]--
-	mobileButton.MouseButton1Click:Connect(function()
-		toggleBar(true)
-
-	end)
-
-	--[[Add drag functionality]]--
-	local dragging
-	local dragInput
-	local dragStart
-	local startPos
-
-	local lastMousePos
-	local lastGoalPos
-	local dragSpeed = 20
-
-	local function update(dt)
-		if not (startPos) then return end
-		local snap = (mouse.ViewSizeX - mouse.X) <= mouse.ViewSizeX/2 and 1 or mobileButton.Size.X.Scale
-		if not (dragging) and (lastGoalPos) then
-			mobileButton.Position = UDim2.new(lastGoalPos.X.Scale, 0, startPos.Y.Scale, lerp(mobileButton.Position.Y.Offset, lastGoalPos.Y.Offset, dt * dragSpeed))
-			return 
-		end
-
-		local delta = (lastMousePos - uis:GetMouseLocation())
-		local xGoal = (startPos.X.Offset - delta.X)
-		local yGoal = (startPos.Y.Offset - delta.Y)
-		lastGoalPos = UDim2.new(snap,0, startPos.Y.Scale, yGoal)
-
-		mobileButton.Position = UDim2.new(snap ,0, startPos.Y.Scale, lerp(mobileButton.Position.Y.Offset, yGoal, dt * dragSpeed))	
-	end
-
-	mobileButton.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = true
-			dragStart = input.Position
-			startPos = mobileButton.Position
-			lastMousePos = uis:GetMouseLocation()
-
-			input.Changed:Connect(function()
-				if inputif success and type(files) == "table" then
-		for i,v in pairs(files) do
-			if v:sub(-5,-1) ~= ".qcmd" then continue end
-			pcall(function()
-				task.spawn(function()
-					loadstring(readfile(v))() -- why does nothing support loadfile :sob:
-				end)
-			end)
-		end
-	end
-end
-
---[[Create commands]]--
-addCommand("cmds", function()
-	cmdsFrame.Visible = true
-end, {"commands"}, 3)
-
-addCommand("setprefix", function(plrs,newPrefix)
-	local char = newPrefix:sub(1,1)
-	if char == "" then prefix = ";" return end
-	prefix = char
-	prefixEnum = getKeyCode(char)
-end, {"prefix"}, 3)
-
-addCommand("setbind", function()
-	uis.InputBegan:Wait() -- fires Return KeyCode
-	local enum = uis.InputBegan:Wait().KeyCode
-	prefixEnum = enum
-end, {"bind"}, 3)
-
-addCommand("admin", function(plrs)
-	for i,v in pairs(plrs) do
-		if v == localPlayer then continue end
-		privilegeLevels[v.Name] = 1
-		debugPrint(`{v.Name} has been made an admin`)
-	end
-end, {"addadmin"}, 2)
-
-addCommand("unadmin", function(plrs)
-	for i,v in pairs(plrs) do
-		if v == localPlayer then continue end
-		privilegeLevels[v.Name] = 0
-		debugPrint(`{v.Name} is no longer an admin`)
-	end
-end, {"removeadmin"}, 2)
-
-addCommand("owner", function(plrs)
-	for i,v in pairs(plrs) do
-		if v == localPlayer then continue end
-		privilegeLevels[v.Name] = 2
-		debugPrint(`{v.Name} has been made an owner`)
-	end
-end, {"addowner", "op"}, 3)
-		table.insert(tools, v)
-	end
-
-	if #tools == 0 then return notify("Error", "Tools are required", 5) end
-
-	runCommand("unfly")
-
-	task.wait()
-
-	delete(hum)
-	repeat task.wait() until hum.Parent ~= character
-	cloneHum.Parent = character
-
-	task.wait(.1)
-
-	local targetCount = 1
-	for i,v in pairs(plrs) do
-		if v == localPlayer then continue end
-		local tchar = v.Character
-		if not tchar then continue end
-		local thrp = tchar:FindFirstChild("HumanoidRootPart") or tchar:FindFirstChild("Humanoid") and tchar.Humanoid.RootPart
-		if not thrp then continue end
-		local tool = tools[targetCount]
-		if not tool then return notify("Error", "Not enough tools", 5) end
-
-		cloneHum:EquipTool(tool)
-		repeat task.wait() until tool.Parent == character
-		task.wait()
-  local attempts = 0
-		local tPos = hrp.CFrame * CFrame.new(0,2000,0)
-		repeat
-			thrp.CFrame = tool.Handle.CFrame
-			hrp.CFrame = tPos
-			attempts += 1
-			task.wait()
-		until tool.Parent ~= character or attempts > 100
-		hrp.CFrame = tPos
-		task.wait(.25)
-		delete(tool)
-		targetCount += 1
-		task.wait()
-	end
-
-	hrp.CFrame = oldPos
-
-	task.wait(.2)
-
-	runCommand("re")	
-
-end, {}, 1)
-
-addCommand("bring", function(plrs)
-	local hum = character:FindFirstChild("Humanoid")
-	if not hum then return end
-	local hrp = character:FindFirstChild("HumanoidRooPart") or hum.RootPart
-	if not hrp then return end
-
-	local oldPos = hrp.CFrame
-	local cloneHum = hum:Clone()
-	local tools = {}
-
-	for i,v in pairs(character:GetChildren()) do
-		if not (v:IsA("Tool") and v:FindFirstChild("Handle")) then continue end
-		table.insert(tools, v)
-	end
-
-	for i,v in pairs(localPlayer.Backpack:GetChildren()) do
-		if not (v:IsA("Tool") and v:FindFirstChild("Handle")) then continue end
-		table.insert(tools, v)
-	end
-
-	if #tools == 0 then return notify("Error", "Tools are required", 5) end
-
-	runCommand("unfly")
-
-	task.wait()
-
-	delete(hum)
-	repeat task.wait() until hum.Parent ~= character
-	cloneHum.Parent = character
-
-	task.wait(.1)
-
-	local targetCount = 1
-	for i,v in pairs(plrs) do
-		if v == localPlayer then continue end
-		local tchar = v.Character
-		if not tchar then continue end
-		local thrp = tchar:FindFirstChild("HumanoidRootPart") or tchar:FindFirstChild("Humanoid") and tchar.Humanoid.RootPart
-		if not thrp then continue end
-		local tool = tools[targetCount]
-		if not tool then return notify("Error", "Not enough tools", 5) end
-  
-  continue end
-		local humanoid = char:FindFirstChildOfClass("Humanoid")
-		if humanoid == nil then continue end
-		local animator = humanoid:FindFirstChildOfClass("Animator")
-		if animator == nil then continue end
-		delete(animator)
-		local animate = char:FindFirstChild("Animate")
-		if animate == nil then continue end
-		delete(animate)
-	end
-end, {}, 1)
-
-addCommand("invisible", function(plrs)
-	local ignoreList = {"UpperTorso", "Head", "HumanoidRootPart", "Humanoid"}
-	for i,v in pairs(plrs) do
-		local char = v.Character
-		if char == nil then continue end
-		local humanoid = char:FindFirstChildOfClass("Humanoid")
-		if humanoid == nil then continue end 
-		if humanoid.RigType ~= Enum.HumanoidRigType.R15 then continue end
-		for _,instance in pairs(char:GetChildren()) do 
-			if table.find(ignoreList, instance.Name) then continue end
-			delete(instance)
-		end
-		if humanoid.RootPart then humanoid.RootPart.Transparency = 0.6 end
-	end
-end, {"invis"}, 1)
-char:FindFirstChild(v.Name) then continue end
-			if plr.Character ~= char then return end
-			delete(v)
-			table.remove(limbs,i)
-			task.wait(speed)
-		end
-
-		local head = char:FindFirstChild("Head")
-		if not head then return end
-		delete(head)
-		task.wait(0.1)
-		for i,v in pairs(char:GetChildren()) do
-			if not v:IsA("BasePart") then continue end
-			delete(v)
-		end
-	end
-	for i,v in pairs(plrs) do 
-		task.spawn(decay,v)
-	end
-end, {"decay"}, 1)
-
-local infectSpeed = 1
-local function infectPlayer(plr)
-	local char = plr.Character
-	if not char then return end
-	debugPrint(`{plr.Name} was infected`)
-	local limbs = {}
-	local limbAmount
-	local shuffledLimbs = {}
-	for i,v in pairs(char:GetChildren()) do
-		if (not v:IsA("BasePart")) or (v.Name:find("Torso") or v.Name == "Head" or v.Name == "HumanoidRootPart") then continue end
-		table.insert(limbs, v)
-	end
-
-	limbAmount = #limbs
-
-	for i = 1, #limbs do
-		local rng = math.random(#limbs)
-		table.insert(shuffledLimbs , limbs[rng])
-		table.remove(limbs, rng)
-	end
- 			local hum = tchar:FindFirstChild("Humanoid")
-			if hum and hum.Health <= 0 then continue end
-			runCommand("kill",{v})
-		end
-	end
-end))
-
-addCommand("killaura",function(plrs, input)
-	local plrs = (#plrs > 0 and plrs) or ({localPlayer})
-	local split = input:split(" ")
-	local range = tonumber(split[#split]) or 10
-	for i,v in pairs(plrs) do
-		killauras[v.Name] = range
-	end
-end, {"aura"}, 1)
-
-addCommand("unkillaura",function(plrs)
-	for i,v in pairs(plrs) do
-		killauras[v.Name] = nil
-	end
-end, {"unaura"}, 1)
-
-table.insert(genv.connections, rs.Heartbeat:Connect(function()
-	for name, range in pairs(kickauras) do
-		local plr = players:FindFirstChild(name)
-		if not plr then kickauras[name] = nil continue end
-		local char = plr.Character
-		if not char then continue end
-		local pos = char:GetPivot().Position
-
-		for i,v in pairs(players:GetPlayers()) do
-			if v == nil or v == plr then continue end
-			local tchar = v.Character
-			if not tchar then continue end
-			local tpos = tchar:GetPivot().Position
-			local distance = (pos - tpos).Magnitude
-			if distance > range then continue end
-			delete(v)
-		end
-	end
-end))
-
-addCommand("kickaura",function(plrs, input)
-	local plrs = (#plrs > 0 and plrs) or ({localPlayer})
-	local split = input:split(" ")
-	local range = tonumber(split[#split]) or 3
-	for i,v in pairs(plrs) do
-		kickauras[v.Name] = range
-	end
-end, {}, 2)
-
-addCommand("unkickaura",function(plrs)
-	for i,v in pairs(plrs) do
-		kickauras[v.Name] = nil
-	end
-end, {}, 2)
-
-addCommand("close", abort, {}, 3)
-	repeat task.wait() until hum.Parent == nil
-	task.wait()
-	fakeHum.Parent = char
-	task.wait()
-	table.insert(reanimConnections, rs.PreSimulation:Connect(onPreSim))
-	table.insert(reanimConnections, rs.PostSimulation:Connect(onPostSim))
-	table.insert(reanimConnections, rs.Stepped:Connect(function()
-		disableCollisions(char,false)
-		disableCollisions(rig,true)
-	end))
-
-	breakJoints(char)
-	makeTransparent(char)
-	removeScripts(char)
-	removeTouchTriggers(char)
-
-	genv.LoadLibrary = function(lib) return loadstring(httpget("https://raw.githubusercontent.com/Roblox/Core-Scripts/master/CoreScriptsRoot/Libraries/" .. lib .. ".lua"))() end
-
-	local reset = Instance.new("BindableEvent")
-	reset.Event:Connect(function()
-		if stopAlign then
-			local hum = character:FindFirstChildOfClass("Humanoid")
-			if not hum then return character:BreakJoints() end
-			hum.Health = 0
-			return
-		end
-		notify("Resetting", "Please wait ~6 seconds", 6)
-		stopAntiVoid = true
-		rigHRP.Anchored = true
-		rigHRP.CFrame = CFrame.new(0,workspace.FallenPartsDestroyHeight + 5,0)
-		task.wait(0.5)
-		stopAlign = true
-		rigHum:ChangeState(Enum.HumanoidStateType.Dead)
-		localPlayer.CharacterAdded:Wait()
-		rig:Destroy()
-		for i,v in pairs(reanimConnections) do
-			v:Disconnect()
-		end
-	end)
- table.insert(genv.connections,rs.Heartbeat:Connect(update))
-
---[[send to game logger]]--
-if not inDatabase then
-	local function promptCallback(answer)
-		if answer == "No" then return end
-		local sg = localPlayer:FindFirstChildOfClass("StarterGear")
-		if sg then
-			delete(sg)
-			task.wait(checkTime + mobileOffset)
-		end
-		if (sg and sg.Parent == localPlayer) or (isTesting == false and game:GetService("GuiService"):GetErrorCode() ~= Enum.ConnectionError.OK) then return notify("Logger error", "Game could not be logged.", 10) end
-		sendGame()
-		debugPrint("game sent to server")
-	end
-
-	local bindable = Instance.new("BindableFunction")
-	bindable.OnInvoke = promptCallback
-
-	sgui:SetCore("SendNotification", {
-		Title = "Game logger";
-		Text = "Log this game? (PLEASE TEST COMMANDS BEFORE CLICKING YES)",
-		Duration = 300,
-		Button1 = "Yes",
-		Button2 = "No",
-		Icon = "rbxassetid://71876941165953",
-		Callback = bindable
-	})
-end
-
-debugPrint("GGCMD loaded succesfully!")
