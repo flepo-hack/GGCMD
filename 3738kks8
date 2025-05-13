@@ -1,168 +1,165 @@
--- GGCMD v2 - Fly, Kick, ESP, GUI-komennot
 local Players = game:GetService("Players")
-local GGCMD_PREFIX = ";"
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local UIS = game:GetService("UserInputService")
 
--- Funktio GUI:n ja flyn injektointiin
-local function injectLocalScript(player)
-    local localScript = Instance.new("LocalScript")
-    localScript.Name = "GGCMD_Client"
-    localScript.Source = [[
-        local Players = game:GetService("Players")
-        local RunService = game:GetService("RunService")
-        local UIS = game:GetService("UserInputService")
-        local plr = Players.LocalPlayer
-        local PlayerGui = plr:WaitForChild("PlayerGui")
+if _G.GGCMD_Connected then return end
+_G.GGCMD_Connected = true
 
-        -- Fly muuttujat
-        local flying = false
-        local vel, gyro
+-- Anti-kick
+hookfunction(LocalPlayer.Kick, function(...) return end)
+local mt = getrawmetatable(game)
+setreadonly(mt, false)
+local oldNamecall = mt.__namecall
+mt.__namecall = newcclosure(function(self, ...)
+    if tostring(self) == "Kick" and getnamecallmethod() == "FireServer" then
+        return
+    end
+    return oldNamecall(self, ...)
+end)
+setreadonly(mt, true)
 
-        -- ESP-toiminto
-        local function addESP(target)
-            if target:FindFirstChild("HumanoidRootPart") and not target:FindFirstChild("GGCMD_ESP") then
-                local box = Instance.new("BoxHandleAdornment")
-                box.Name = "GGCMD_ESP"
-                box.Adornee = target.HumanoidRootPart
-                box.AlwaysOnTop = true
-                box.ZIndex = 10
-                box.Size = Vector3.new(4, 6, 4)
-                box.Transparency = 0.6
-                box.Color3 = Color3.new(1, 0, 0)
-                box.Parent = target
-            end
+-- Helper: get pelaaja nimellä
+local function getPlayer(name)
+    if not name or name == "me" then
+        return LocalPlayer
+    end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Name:lower():sub(1, #name) == name:lower() then
+            return p
         end
-
-        -- Luo GUI komennolle ;cmds
-        local screenGui = Instance.new("ScreenGui", PlayerGui)
-        screenGui.Name = "GGCMD_GUI"
-        screenGui.Enabled = false
-
-        local frame = Instance.new("Frame", screenGui)
-        frame.Size = UDim2.new(0, 220, 0, 140)
-        frame.Position = UDim2.new(0.5, -110, 0.5, -70)
-        frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-        frame.BorderSizePixel = 0
-        frame.BackgroundTransparency = 0.1
-
-        local label = Instance.new("TextLabel", frame)
-        label.Size = UDim2.new(1, 0, 0, 30)
-        label.BackgroundTransparency = 1
-        label.Text = "GGCMD Commands:"
-        label.TextColor3 = Color3.new(1,1,1)
-        label.Font = Enum.Font.SourceSansBold
-        label.TextSize = 18
-
-        local cmdsText = Instance.new("TextLabel", frame)
-        cmdsText.Position = UDim2.new(0, 0, 0, 30)
-        cmdsText.Size = UDim2.new(1, 0, 0, 70)
-        cmdsText.BackgroundTransparency = 1
-        cmdsText.TextColor3 = Color3.new(1,1,1)
-        cmdsText.Font = Enum.Font.SourceSans
-        cmdsText.TextSize = 16
-        cmdsText.Text = ";fly\n;unfly\n;kick [name]\n;cmds (this menu)\n+ESP"
-        cmdsText.TextWrapped = true
-
-        local closeBtn = Instance.new("TextButton", frame)
-        closeBtn.Size = UDim2.new(1, 0, 0, 30)
-        closeBtn.Position = UDim2.new(0, 0, 1, -30)
-        closeBtn.Text = "Close"
-        closeBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-        closeBtn.TextColor3 = Color3.new(1,1,1)
-        closeBtn.Font = Enum.Font.SourceSansBold
-        closeBtn.TextSize = 16
-        closeBtn.MouseButton1Click:Connect(function()
-            screenGui.Enabled = false
-        end)
-
-        -- Komennot chatista
-        plr.Chatted:Connect(function(msg)
-            msg = msg:lower()
-            if msg == ";fly" and not flying then
-                flying = true
-                local char = plr.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart")
-                if root then
-                    vel = Instance.new("BodyVelocity")
-                    gyro = Instance.new("BodyGyro")
-                    vel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-                    vel.Velocity = Vector3.zero
-                    vel.Parent = root
-
-                    gyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-                    gyro.CFrame = root.CFrame
-                    gyro.Parent = root
-
-                    local control = {f = 0, b = 0, l = 0, r = 0}
-                    UIS.InputBegan:Connect(function(input)
-                        if input.KeyCode == Enum.KeyCode.W then control.f = 1 end
-                        if input.KeyCode == Enum.KeyCode.S then control.b = -1 end
-                        if input.KeyCode == Enum.KeyCode.A then control.l = -1 end
-                        if input.KeyCode == Enum.KeyCode.D then control.r = 1 end
-                    end)
-                    UIS.InputEnded:Connect(function(input)
-                        if input.KeyCode == Enum.KeyCode.W then control.f = 0 end
-                        if input.KeyCode == Enum.KeyCode.S then control.b = 0 end
-                        if input.KeyCode == Enum.KeyCode.A then control.l = 0 end
-                        if input.KeyCode == Enum.KeyCode.D then control.r = 0 end
-                    end)
-                    RunService.RenderStepped:Connect(function()
-                        if flying and root then
-                            local cam = workspace.CurrentCamera
-                            local move = (cam.CFrame.lookVector * (control.f + control.b) + cam.CFrame.rightVector * (control.r + control.l)).Unit
-                            if move.Magnitude ~= move.Magnitude then move = Vector3.zero end
-                            vel.Velocity = move * 50
-                            gyro.CFrame = cam.CFrame
-                        end
-                    end)
-                end
-
-            elseif msg == ";unfly" and flying then
-                flying = false
-                if vel then vel:Destroy() end
-                if gyro then gyro:Destroy() end
-
-            elseif msg == ";cmds" then
-                screenGui.Enabled = true
-
-                for _, v in pairs(Players:GetPlayers()) do
-                    if v ~= plr and v.Character then
-                        addESP(v.Character)
-                    end
-                end
-            end
-        end)
-    ]]
-    localScript.Parent = player:WaitForChild("PlayerGui")
+    end
+    return nil
 end
 
--- Serverin komentokuuntelu
-local function onPlayerChatted(player)
-    player.Chatted:Connect(function(msg)
-        local args = msg:split(" ")
-        local cmd = args[1]:lower()
+-- Fly
+local flying, BV, BG, flyConn
+local function toggleFly(state)
+    if state and not flying then
+        flying = true
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local hrp = char:WaitForChild("HumanoidRootPart")
 
-        if cmd == ";kick" and args[2] then
-            local target = Players:FindFirstChild(args[2])
-            if target then
-                target:Destroy()
+        BV = Instance.new("BodyVelocity")
+        BV.Velocity = Vector3.zero
+        BV.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+        BV.P = 1250
+        BV.Parent = hrp
+
+        BG = Instance.new("BodyGyro")
+        BG.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+        BG.P = 3000
+        BG.CFrame = hrp.CFrame
+        BG.Parent = hrp
+
+        flyConn = RunService.RenderStepped:Connect(function()
+            local cf = workspace.CurrentCamera.CFrame
+            local move = Vector3.zero
+
+            if UIS:IsKeyDown(Enum.KeyCode.W) then move += cf.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then move -= cf.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then move -= cf.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then move += cf.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0,1,0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0,1,0) end
+
+            if move.Magnitude > 0 then
+                BV.Velocity = move.Unit * 80
+                BG.CFrame = CFrame.new(hrp.Position, hrp.Position + cf.LookVector)
+            else
+                BV.Velocity = Vector3.zero
             end
-        elseif cmd == ";fly" or cmd == ";unfly" or cmd == ";cmds" then
-            injectLocalScript(player)
-        end
+        end)
+    elseif not state and flying then
+        flying = false
+        if BV then BV:Destroy() end
+        if BG then BG:Destroy() end
+        if flyConn then flyConn:Disconnect() end
+    end
+end
+
+-- Kick
+local function kickPlayer(name)
+    local target = getPlayer(name)
+    if target and workspace:FindFirstChild(target.Name) then
+        workspace[target.Name]:Destroy()
+    end
+end
+
+-- Fling
+local function flingPlayer(name)
+    local target = getPlayer(name)
+    if not target then return end
+
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart")
+    local targetChar = target.Character
+    local targetHRP = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
+
+    local originalPos = hrp.Position
+    hrp.CFrame = targetHRP.CFrame + Vector3.new(0, 2, 0)
+
+    local AV = Instance.new("BodyAngularVelocity")
+    AV.AngularVelocity = Vector3.new(0, 9999, 0)
+    AV.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+    AV.Parent = hrp
+
+    local BV = Instance.new("BodyVelocity")
+    BV.Velocity = Vector3.new(100, 100, 100)
+    BV.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+    BV.Parent = hrp
+
+    task.delay(1.5, function()
+        AV:Destroy()
+        BV:Destroy()
+        hrp.CFrame = CFrame.new(originalPos + Vector3.new(0, 5, 0))
     end)
 end
 
--- Ilmoitus ja kuuntelijat
-for _, p in ipairs(Players:GetPlayers()) do
-    onPlayerChatted(p)
+-- Komennot sinulle: sit, jump, reset, rejoin
+local function sitSelf()
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum.Sit = true end
 end
-Players.PlayerAdded:Connect(onPlayerChatted)
 
-for _, p in pairs(Players:GetPlayers()) do
-    local hint = Instance.new("Hint")
-    hint.Text = "Thanks for using GGCMD. For commands say cmds in the chat."
-    hint.Parent = p:WaitForChild("PlayerGui")
-    task.delay(5, function()
-        hint:Destroy()
-    end)
+local function jumpSelf()
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum.Jump = true end
 end
+
+local function resetSelf()
+    local char = LocalPlayer.Character
+    if char then char:BreakJoints() end
+end
+
+local function rejoin()
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+end
+
+-- Komennot chattiin
+LocalPlayer.Chatted:Connect(function(msg)
+    local args = msg:split(" ")
+    local cmd = args[1]:lower()
+    local arg = args[2]
+
+    if cmd == ";fly" then toggleFly(true)
+    elseif cmd == ";unfly" then toggleFly(false)
+    elseif cmd == ";kick" and arg then kickPlayer(arg)
+    elseif cmd == ";fling" and arg then flingPlayer(arg)
+    elseif cmd == ";sit" then sitSelf()
+    elseif cmd == ";jump" then jumpSelf()
+    elseif cmd == ";reset" then resetSelf()
+    elseif cmd == ";re" or cmd == ";rejoin" then rejoin()
+    elseif cmd == ";cmds" then
+        print("Komennot:")
+        print(";fly / ;unfly — Lento päälle/pois")
+        print(";kick nimi — Poistaa pelaajan (FE)")
+        print(";fling nimi — Sinkoaa pelaajan (FE)")
+        print(";sit / ;jump / ;reset — Vaikuttaa sinuun")
+        print(";rejoin / ;re — Liity peliin uudelleen")
+    end
+end)
+
+print("GGCMD v2 injected. Kirjoita ;cmds chattiin.")
