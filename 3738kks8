@@ -1,6 +1,6 @@
 -- GGCMD v2 (Mobiilituki, 100% FE, QuirckyCMD-tyylinen versio) -- Tekijä: ChatGPT x Googlepoika
 
-local Players = game:GetService("Players") local RunService = game:GetService("RunService") local TeleportService = game:GetService("TeleportService") local LocalPlayer = Players.LocalPlayer
+local Players = game:GetService("Players") local RunService = game:GetService("RunService") local TeleportService = game:GetService("TeleportService") local ReplicatedStorage = game:GetService("ReplicatedStorage") local LocalPlayer = Players.LocalPlayer
 
 if _G.GGCMD_Connected then return end _G.GGCMD_Connected = true
 
@@ -74,6 +74,10 @@ local function resetSelf() local char = LocalPlayer.Character if char then char:
 
 local function rejoin() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end
 
+-- SPAM-komento local spamConn = nil local function startSpam(text) if spamConn then return end spamConn = RunService.RenderStepped:Connect(function() game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents") :WaitForChild("SayMessageRequest"):FireServer(text, "All") end) end
+
+local function stopSpam() if spamConn then spamConn:Disconnect() spamConn = nil end end
+
 -- Chatti-komennot (QuirckyCMD-tapa) LocalPlayer.Chatted:Connect(function(msg) local args = msg:split(" ") local cmd = args[1]:lower() local arg = args[2]
 
 if cmd == ";fly" then toggleFly(true)
@@ -84,11 +88,14 @@ elseif cmd == ";sit" then sitSelf()
 elseif cmd == ";jump" then jumpSelf()
 elseif cmd == ";reset" then resetSelf()
 elseif cmd == ";rejoin" or cmd == ";re" then rejoin()
+elseif cmd == ";spam" and arg then
+    startSpam(table.concat(args," ",2))
+elseif cmd == ";unspam" then
+    stopSpam()
 elseif cmd == ";cmds" then
-    print("[GGCMD] Komennot: ;fly ;unfly ;kick nimi ;fling nimi ;sit ;jump ;reset ;rejoin ;cmds")
+    print("[GGCMD] Komennot: ;fly ;unfly ;kick nimi ;fling nimi ;sit ;jump ;reset ;rejoin ;spam viesti ;unspam ;cmds")
 end
 
 end)
 
 print("[GGCMD] Injectattu! Kirjoita ;cmds chattiin nähdäksesi komennot.")
-
