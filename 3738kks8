@@ -1,13 +1,10 @@
---[[
-    GGCMD v2 by Googlepoika
-    Fully mobile & FE
-    Commands: ;fly, ;unfly, ;kick, ;fling, ;spam, ;unspam, ;cmds, ;gui, ;orbit
-]]
+-- GGCMD v2 by Googlepoika (Updated)
 
 local plr = game.Players.LocalPlayer
 local mouse = plr:GetMouse()
 local cmdPrefix = ";"
 local commands = {}
+local orbiting = false
 
 local function notify(txt)
     game.StarterGui:SetCore("SendNotification", {
@@ -17,7 +14,6 @@ local function notify(txt)
     })
 end
 
--- Helper
 local function getPlayer(name)
     name = name:lower()
     for _, v in pairs(game.Players:GetPlayers()) do
@@ -27,28 +23,25 @@ local function getPlayer(name)
     end
 end
 
--- Fly
 commands.fly = function()
     local char = plr.Character
     if not char then return end
     local hrp = char:WaitForChild("HumanoidRootPart")
     local hum = char:FindFirstChildOfClass("Humanoid")
-
     if char:FindFirstChild("GGCMD_Fly") then return notify("Already flying.") end
 
-    local bv = Instance.new("BodyVelocity")
-    local bg = Instance.new("BodyGyro")
     local part = Instance.new("BoolValue", char)
     part.Name = "GGCMD_Fly"
 
+    local bv = Instance.new("BodyVelocity")
     bv.Name = "GGCMD_BV"
-    bg.Name = "GGCMD_BG"
-
     bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-    bv.Velocity = Vector3.zero
+    bv.Velocity = Vector3.new(0, 80, 0) -- heti ilmaan
     bv.P = 1250
     bv.Parent = hrp
 
+    local bg = Instance.new("BodyGyro")
+    bg.Name = "GGCMD_BG"
     bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
     bg.P = 3000
     bg.CFrame = hrp.CFrame
@@ -65,7 +58,7 @@ commands.fly = function()
             return
         end
         local move = hum.MoveDirection
-        bv.Velocity = move * 80
+        bv.Velocity = Vector3.new(move.X, 1, move.Z) * 80 + Vector3.new(0, 30, 0)
         bg.CFrame = workspace.CurrentCamera.CFrame
     end)
 end
@@ -88,7 +81,11 @@ end
 commands.kick = function(args)
     local target = getPlayer(args[1])
     if target then
-        target:Kick("Banned by Googlepoika😈😈")
+        pcall(function()
+            target:Kick("Banned by Googlepoika😈😈")
+            target:Destroy()
+        end)
+        notify("Kicked " .. target.Name)
     end
 end
 
@@ -98,11 +95,11 @@ commands.fling = function(args)
     local targetHRP = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
     if targetHRP then
         local bv = Instance.new("BodyVelocity")
-        bv.Velocity = Vector3.new(5000, 5000, 5000)
-        bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-        bv.P = 5000
+        bv.Velocity = Vector3.new(math.random(-9999, 9999), 9999, math.random(-9999, 9999))
+        bv.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+        bv.P = 10000
         bv.Parent = targetHRP
-        game.Debris:AddItem(bv, 0.2)
+        game.Debris:AddItem(bv, 0.3)
         notify("Flinged " .. target.Name)
     end
 end
@@ -127,7 +124,7 @@ commands.unspam = function()
 end
 
 commands.cmds = function()
-    notify("Commands: ;fly, ;unfly, ;kick [name], ;fling [name], ;spam [name], ;unspam, ;cmds, ;gui, ;orbit [name]")
+    notify("Commands: ;fly, ;unfly, ;kick [name], ;fling [name], ;spam [name], ;unspam, ;cmds, ;gui, ;orbit [name], ;unorbit")
 end
 
 commands.gui = function()
@@ -144,6 +141,10 @@ commands.gui = function()
     txt.TextWrapped = true
     txt.Text = "GGCMD v2 GUI\nUse chat to enter commands.\nFE & Mobile Ready."
     txt.BackgroundTransparency = 1
+
+    task.delay(5, function()
+        if s then s:Destroy() end
+    end)
 end
 
 commands.orbit = function(args)
@@ -154,7 +155,7 @@ commands.orbit = function(args)
     if not myHRP then return end
     local angle = 0
     local dist = 5
-    local orbiting = true
+    orbiting = true
     notify("Orbiting " .. target.Name)
     task.spawn(function()
         while orbiting and center.Parent and myHRP.Parent and plr.Character do
@@ -165,6 +166,11 @@ commands.orbit = function(args)
             task.wait(0.03)
         end
     end)
+end
+
+commands.unorbit = function()
+    orbiting = false
+    notify("Stopped orbit")
 end
 
 -- Chat listener
