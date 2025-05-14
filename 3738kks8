@@ -27,7 +27,7 @@ local function getPlayer(name)
 end
 
 --------------------------------------------------
--- Auto GUI at startup (4 sec näkyvyys)
+-- Auto GUI at startup (4 sec visibility)
 do
     local s = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
     s.Name = "GGCMD_GUI"
