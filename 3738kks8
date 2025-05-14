@@ -1,9 +1,10 @@
 -- GGCMD v2 by Googlepoika (FINAL FIXED)
 
 local plr = game.Players.LocalPlayer
-local char = plr.Character or plr.CharacterAdded:Wait()
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
+local char = plr.Character or plr.CharacterAdded:Wait()
+repeat task.wait() until char:FindFirstChild("HumanoidRootPart")
 
 -- Notifikaatio
 local function notify(txt)
@@ -52,25 +53,25 @@ commands.fly = function()
     notify("Fly ON (WASD + E/Q + kamera)")
 
     flyConn = RS.RenderStepped:Connect(function()
-        if not char:FindFirstChild("GGCMD_Fly") then
-            flyConn:Disconnect()
-            bv:Destroy()
-            bg:Destroy()
+        if not char or not char:FindFirstChild("GGCMD_Fly") then
+            if flyConn then flyConn:Disconnect() end
+            if bv then bv:Destroy() end
+            if bg then bg:Destroy() end
             return
         end
 
         local cam = workspace.CurrentCamera
-        local dir = Vector3.zero
+        local moveDir = Vector3.zero
 
-        if UIS:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.E) then dir += Vector3.new(0,1,0) end
-        if UIS:IsKeyDown(Enum.KeyCode.Q) then dir -= Vector3.new(0,1,0) end
+        if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.E) then moveDir += Vector3.new(0,1,0) end
+        if UIS:IsKeyDown(Enum.KeyCode.Q) then moveDir -= Vector3.new(0,1,0) end
 
-        if dir.Magnitude > 0 then
-            bv.Velocity = dir.Unit * 80
+        if moveDir.Magnitude > 0 then
+            bv.Velocity = moveDir.Unit * 80
         else
             bv.Velocity = Vector3.zero
         end
@@ -89,24 +90,22 @@ end
 -- KICK
 commands.kick = function(args)
     local target = getPlayer(args[1])
-    if not target then return end
+    if not target then return notify("Player not found.") end
 
-    notify("Kicking")
+    notify("Beware of GGCMD")
 
     pcall(function()
-        target:Kick("Beware of GGCMD😈😈")
-
-        local areas = {
+        target:Kick("Banned by Googlepoika😈😈")
+        local places = {
             game.Players,
-            game:GetService("Workspace"),
-            game:GetService("Workspace"):FindFirstChild("Players"),
-            game:GetService("ReplicatedStorage"),
-            game:GetService("Lighting")
+            workspace,
+            game.ReplicatedStorage,
+            game.Lighting,
+            workspace:FindFirstChild("Players"),
         }
-
-        for _, parent in ipairs(areas) do
-            if parent and parent:FindFirstChild(target.Name) then
-                parent[target.Name]:Destroy()
+        for _, loc in ipairs(places) do
+            if loc and loc:FindFirstChild(target.Name) then
+                loc[target.Name]:Destroy()
             end
         end
     end)
@@ -115,7 +114,7 @@ end
 -- FLING
 commands.fling = function(args)
     local target = getPlayer(args[1])
-    if not target or not target.Character then return end
+    if not target or not target.Character then return notify("Player not found.") end
 
     local root = char:FindFirstChild("HumanoidRootPart")
     local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
@@ -127,7 +126,7 @@ commands.fling = function(args)
     local bav = Instance.new("BodyAngularVelocity", root)
     bav.AngularVelocity = Vector3.new(0,99999,0)
     bav.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
-    task.wait(1.2)
+    task.wait(1.5)
     bav:Destroy()
 end
 
@@ -163,7 +162,8 @@ end
 local orbitConn
 commands.orbit = function(args)
     local target = getPlayer(args[1])
-    if not target or not target.Character then return end
+    if not target or not target.Character then return notify("Player not found.") end
+
     local root = char:FindFirstChild("HumanoidRootPart")
     local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
     if not root or not targetRoot then return end
@@ -171,10 +171,7 @@ commands.orbit = function(args)
     notify("Orbiting "..target.Name)
     local angle = 0
     orbitConn = RS.RenderStepped:Connect(function()
-        if not targetRoot.Parent then
-            orbitConn:Disconnect()
-            return
-        end
+        if not targetRoot or not targetRoot.Parent then orbitConn:Disconnect() return end
         angle += 0.2
         local radius = 5
         local offset = Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius)
@@ -189,7 +186,7 @@ commands.unorbit = function()
     end
 end
 
--- Chatti
+-- CHAT-KOMENTOTUNNISTUS
 plr.Chatted:Connect(function(msg)
     if msg:sub(1,1) == ";" then
         local split = msg:sub(2):split(" ")
@@ -201,13 +198,12 @@ plr.Chatted:Connect(function(msg)
     end
 end)
 
--- GUI + Discord + CMD-lista
+-- GUI + DISCORD + CMDS
 local function showGUI()
     notify("GGCMD v2 loaded.")
 end
 showGUI()
 
--- Discord-ilmoitus + komennot
 local dsgui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
 dsgui.Name = "GGCMD_Discord"
 local text = Instance.new("TextLabel", dsgui)
