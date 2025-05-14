@@ -1,18 +1,19 @@
--- GGCMD v2 by Googlepoika
+-- GGCMD v2 by Googlepoika (FINAL FIXED)
 
 local plr = game.Players.LocalPlayer
 local char = plr.Character or plr.CharacterAdded:Wait()
-local mouse = plr:GetMouse()
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
 
--- Notifikaatiot
+-- Notifikaatio
 local function notify(txt)
-    game.StarterGui:SetCore("SendNotification", {
-        Title = "GGCMD v2",
-        Text = txt,
-        Duration = 4
-    })
+    pcall(function()
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "GGCMD v2",
+            Text = txt,
+            Duration = 4
+        })
+    end)
 end
 
 -- Pelaajahaku
@@ -28,26 +29,25 @@ end
 -- Komennot
 local commands = {}
 
+-- FLY
 local flyConn
 commands.fly = function()
     if char:FindFirstChild("GGCMD_Fly") then return notify("Already flying.") end
+
     local hrp = char:WaitForChild("HumanoidRootPart")
-    local hum = char:FindFirstChildOfClass("Humanoid")
     Instance.new("BoolValue", char).Name = "GGCMD_Fly"
 
-    local bv = Instance.new("BodyVelocity")
+    local bv = Instance.new("BodyVelocity", hrp)
     bv.Name = "GGCMD_BV"
     bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
     bv.Velocity = Vector3.zero
     bv.P = 1250
-    bv.Parent = hrp
 
-    local bg = Instance.new("BodyGyro")
+    local bg = Instance.new("BodyGyro", hrp)
     bg.Name = "GGCMD_BG"
     bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
     bg.P = 3000
     bg.CFrame = hrp.CFrame
-    bg.Parent = hrp
 
     notify("Fly ON (WASD + E/Q + kamera)")
 
@@ -60,76 +60,84 @@ commands.fly = function()
         end
 
         local cam = workspace.CurrentCamera
-        local moveDir = Vector3.new()
-        if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Vector3.new(0, 0, -1) end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir + Vector3.new(0, 0, 1) end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir + Vector3.new(-1, 0, 0) end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Vector3.new(1, 0, 0) end
+        local dir = Vector3.zero
 
-        local camCF = cam.CFrame
-        local moveVector = camCF:VectorToWorldSpace(moveDir)
-        if moveDir.Magnitude == 0 then moveVector = Vector3.zero end
+        if UIS:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.E) then dir += Vector3.new(0,1,0) end
+        if UIS:IsKeyDown(Enum.KeyCode.Q) then dir -= Vector3.new(0,1,0) end
 
-        local vertical = 0
-        if UIS:IsKeyDown(Enum.KeyCode.E) then vertical += 1 end
-        if UIS:IsKeyDown(Enum.KeyCode.Q) then vertical -= 1 end
+        if dir.Magnitude > 0 then
+            bv.Velocity = dir.Unit * 80
+        else
+            bv.Velocity = Vector3.zero
+        end
 
-        bv.Velocity = moveVector.Unit * 80 + Vector3.new(0, vertical * 80, 0)
         bg.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.CFrame.LookVector)
     end)
 end
 
 commands.unfly = function()
     if char:FindFirstChild("GGCMD_Fly") then
-        char:FindFirstChild("GGCMD_Fly"):Destroy()
+        char.GGCMD_Fly:Destroy()
         notify("Fly OFF")
     end
 end
 
+-- KICK
 commands.kick = function(args)
     local target = getPlayer(args[1])
-    if target then
-        notify("Kicking")
-        pcall(function()
-            target:Kick("Beware of GGCMD😈😈")
-            local areas = {
-                game.Players,
-                game:GetService("Workspace"),
-                game:GetService("Workspace"):FindFirstChild("Players"),
-                game:GetService("ReplicatedStorage"),
-                game:GetService("Lighting")
-            }
-            for _, parent in pairs(areas) do
-                if parent and parent:FindFirstChild(target.Name) then
-                    parent[target.Name]:Destroy()
-                end
+    if not target then return end
+
+    notify("Kicking")
+
+    pcall(function()
+        target:Kick("Beware of GGCMD😈😈")
+
+        local areas = {
+            game.Players,
+            game:GetService("Workspace"),
+            game:GetService("Workspace"):FindFirstChild("Players"),
+            game:GetService("ReplicatedStorage"),
+            game:GetService("Lighting")
+        }
+
+        for _, parent in ipairs(areas) do
+            if parent and parent:FindFirstChild(target.Name) then
+                parent[target.Name]:Destroy()
             end
-        end)
-    end
+        end
+    end)
 end
 
+-- FLING
 commands.fling = function(args)
     local target = getPlayer(args[1])
-    if not target then return end
+    if not target or not target.Character then return end
+
     local root = char:FindFirstChild("HumanoidRootPart")
-    local targetRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-    if root and targetRoot then
-        notify("Flinging "..target.Name)
-        root.CFrame = targetRoot.CFrame + Vector3.new(0,3,0)
-        local bv = Instance.new("BodyAngularVelocity", root)
-        bv.AngularVelocity = Vector3.new(99999,99999,99999)
-        bv.MaxTorque = Vector3.new(1e9,1e9,1e9)
-        task.wait(1.5)
-        bv:Destroy()
-    end
+    local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    if not root or not targetRoot then return end
+
+    notify("Flinging "..target.Name)
+    root.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
+
+    local bav = Instance.new("BodyAngularVelocity", root)
+    bav.AngularVelocity = Vector3.new(0,99999,0)
+    bav.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+    task.wait(1.2)
+    bav:Destroy()
 end
 
+-- SPAM
 local spamConn
 commands.spam = function(args)
-    local txt = table.concat(args, " ")
     if spamConn then spamConn:Disconnect() end
+    local text = table.concat(args, " ")
     spamConn = RS.RenderStepped:Connect(function()
-        game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(txt, "All")
+        game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
     end)
     notify("Spam ON")
 end
@@ -141,33 +149,37 @@ commands.unspam = function()
     end
 end
 
+-- CMD LIST
 commands.cmds = function()
     notify(";fly ;unfly ;kick ;fling ;spam ;unspam ;gui ;orbit ;unorbit")
 end
 
+-- GUI
 commands.gui = function()
     notify("GUI opened.")
 end
 
+-- ORBIT
 local orbitConn
 commands.orbit = function(args)
     local target = getPlayer(args[1])
-    if not target then return end
+    if not target or not target.Character then return end
     local root = char:FindFirstChild("HumanoidRootPart")
-    local targetRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-    if root and targetRoot then
-        notify("Orbiting "..target.Name)
-        local angle = 0
-        orbitConn = RS.RenderStepped:Connect(function()
-            if not targetRoot or not targetRoot.Parent then
-                orbitConn:Disconnect()
-                return
-            end
-            angle += 0.2
-            local radius = 5
-            root.CFrame = CFrame.new(targetRoot.Position + Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius))
-        end)
-    end
+    local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    if not root or not targetRoot then return end
+
+    notify("Orbiting "..target.Name)
+    local angle = 0
+    orbitConn = RS.RenderStepped:Connect(function()
+        if not targetRoot.Parent then
+            orbitConn:Disconnect()
+            return
+        end
+        angle += 0.2
+        local radius = 5
+        local offset = Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius)
+        root.CFrame = CFrame.new(targetRoot.Position + offset)
+    end)
 end
 
 commands.unorbit = function()
@@ -189,16 +201,13 @@ plr.Chatted:Connect(function(msg)
     end
 end)
 
--- GUI automaattisesti näkyviin alussa
+-- GUI + Discord + CMD-lista
 local function showGUI()
     notify("GGCMD v2 loaded.")
 end
 showGUI()
-task.delay(4, function()
-    -- Piilotus vaikka ei GUI-elementtiä käytössä
-end)
 
--- Discord GUI
+-- Discord-ilmoitus + komennot
 local dsgui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
 dsgui.Name = "GGCMD_Discord"
 local text = Instance.new("TextLabel", dsgui)
