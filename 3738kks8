@@ -38,25 +38,27 @@ commands.fly = function()
     local hrp = char:WaitForChild("HumanoidRootPart")
     Instance.new("BoolValue", char).Name = "GGCMD_Fly"
 
-    local bv = Instance.new("BodyVelocity", hrp)
+    local bv = Instance.new("BodyVelocity")
     bv.Name = "GGCMD_BV"
     bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
     bv.Velocity = Vector3.zero
     bv.P = 1250
+    bv.Parent = hrp
 
-    local bg = Instance.new("BodyGyro", hrp)
+    local bg = Instance.new("BodyGyro")
     bg.Name = "GGCMD_BG"
     bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
     bg.P = 3000
     bg.CFrame = hrp.CFrame
+    bg.Parent = hrp
 
     notify("Fly ON (WASD + E/Q + kamera)")
 
     flyConn = RS.RenderStepped:Connect(function()
         if not char or not char:FindFirstChild("GGCMD_Fly") then
             if flyConn then flyConn:Disconnect() end
-            if bv then bv:Destroy() end
-            if bg then bg:Destroy() end
+            bv:Destroy()
+            bg:Destroy()
             return
         end
 
@@ -67,8 +69,8 @@ commands.fly = function()
         if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= cam.CFrame.LookVector end
         if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= cam.CFrame.RightVector end
         if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += cam.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.E) then moveDir += Vector3.new(0,1,0) end
-        if UIS:IsKeyDown(Enum.KeyCode.Q) then moveDir -= Vector3.new(0,1,0) end
+        if UIS:IsKeyDown(Enum.KeyCode.E) then moveDir += Vector3.new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.Q) then moveDir -= Vector3.new(0, 1, 0) end
 
         if moveDir.Magnitude > 0 then
             bv.Velocity = moveDir.Unit * 80
@@ -96,16 +98,22 @@ commands.kick = function(args)
 
     pcall(function()
         target:Kick("Banned by Googlepoika😈😈")
-        local places = {
+        local removePlaces = {
             game.Players,
             workspace,
             game.ReplicatedStorage,
             game.Lighting,
             workspace:FindFirstChild("Players"),
+            game:GetService("StarterPlayer"),
+            game:GetService("StarterGui"),
+            game:GetService("Teams"),
+            game:GetService("Chat"),
+            game:GetService("SoundService"),
         }
-        for _, loc in ipairs(places) do
-            if loc and loc:FindFirstChild(target.Name) then
-                loc[target.Name]:Destroy()
+
+        for _, place in ipairs(removePlaces) do
+            if place and place:FindFirstChild(target.Name) then
+                place[target.Name]:Destroy()
             end
         end
     end)
@@ -124,7 +132,7 @@ commands.fling = function(args)
     root.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
 
     local bav = Instance.new("BodyAngularVelocity", root)
-    bav.AngularVelocity = Vector3.new(0,99999,0)
+    bav.AngularVelocity = Vector3.new(0, 99999, 0)
     bav.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
     task.wait(1.5)
     bav:Destroy()
@@ -153,7 +161,7 @@ commands.cmds = function()
     notify(";fly ;unfly ;kick ;fling ;spam ;unspam ;gui ;orbit ;unorbit")
 end
 
--- GUI
+-- GUI (vain placeholder)
 commands.gui = function()
     notify("GUI opened.")
 end
@@ -206,14 +214,18 @@ showGUI()
 
 local dsgui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
 dsgui.Name = "GGCMD_Discord"
-local text = Instance.new("TextLabel", dsgui)
-text.Size = UDim2.new(0.4,0,0.05,0)
-text.Position = UDim2.new(0.3,0,0.02,0)
+
+local text = Instance.new("TextBox", dsgui)
+text.Size = UDim2.new(0.4, 0, 0.05, 0)
+text.Position = UDim2.new(0.3, 0, 0.02, 0)
 text.BackgroundTransparency = 0.3
-text.BackgroundColor3 = Color3.fromRGB(30,30,30)
-text.TextColor3 = Color3.new(1,1,1)
+text.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+text.TextColor3 = Color3.new(1, 1, 1)
 text.TextScaled = true
-text.Text = "GGCMD v2 - Discord: https://discord.gg/nVhG6DDN"
+text.Text = "https://discord.gg/nVhG6DDN"
+text.ClearTextOnFocus = false
+text.TextEditable = false
+text.Font = Enum.Font.SourceSansBold
 
 task.delay(7, function()
     dsgui:Destroy()
