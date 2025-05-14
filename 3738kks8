@@ -29,7 +29,7 @@ end
 -- Komennot
 local commands = {}
 
--- FLY (Mobiili, kameraan perustuva liike)
+-- FLY (kameraan perustuva liike)
 local flyConn
 commands.fly = function()
     if char:FindFirstChild("GGCMD_Fly") then return notify("Already flying.") end
@@ -96,7 +96,7 @@ commands.unfly = function()
     end
 end
 
--- KICK (Kicking + kohteen viesti)
+-- KICK
 commands.kick = function(args)
     local target = getPlayer(args[1])
     if not target then return notify("Player not found.") end
@@ -108,24 +108,7 @@ commands.kick = function(args)
     end)
 
     pcall(function()
-        target:Kick("Banned by Googlepoika😈😈")
-        local removePlaces = {
-            game.Players,
-            workspace,
-            game.ReplicatedStorage,
-            game.Lighting,
-            workspace:FindFirstChild("Players"),
-            game:GetService("StarterPlayer"),
-            game:GetService("StarterGui"),
-            game:GetService("Teams"),
-            game:GetService("Chat"),
-            game:GetService("SoundService"),
-        }
-        for _, place in ipairs(removePlaces) do
-            if place and place:FindFirstChild(target.Name) then
-                place[target.Name]:Destroy()
-            end
-        end
+        target:Kick("Banned by Googlepoika")
     end)
 end
 
@@ -171,7 +154,7 @@ commands.cmds = function()
     notify(";fly ;unfly ;kick ;fling ;spam ;unspam ;gui ;orbit ;unorbit")
 end
 
--- GUI (placeholder)
+-- GUI
 commands.gui = function()
     notify("GUI opened.")
 end
@@ -216,7 +199,7 @@ plr.Chatted:Connect(function(msg)
     end
 end)
 
--- GUI + DISCORD
+-- GUI + DISCORD + CMDBAR
 local function showGUI()
     notify("GGCMD v2 loaded.")
 end
@@ -237,6 +220,44 @@ text.ClearTextOnFocus = false
 text.TextEditable = false
 text.Font = Enum.Font.SourceSansBold
 
+-- CMD BAR GUI
+local cmdGui = Instance.new("ScreenGui", plr.PlayerGui)
+cmdGui.Name = "GGCMD_CmdBar"
+
+local main = Instance.new("Frame", cmdGui)
+main.Size = UDim2.new(0.5, 0, 0.05, 0)
+main.Position = UDim2.new(0.25, 0, 0.09, 0)
+main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+main.BackgroundTransparency = 0.2
+main.Active = true
+main.Draggable = true
+main.BorderSizePixel = 0
+main.ClipsDescendants = true
+
+local textLabel = Instance.new("TextLabel", main)
+textLabel.Size = UDim2.new(10, 0, 1, 0)
+textLabel.Position = UDim2.new(0, 0, 0, 0)
+textLabel.TextColor3 = Color3.new(1, 1, 1)
+textLabel.BackgroundTransparency = 1
+textLabel.TextScaled = true
+textLabel.Font = Enum.Font.SourceSansBold
+textLabel.TextXAlignment = Enum.TextXAlignment.Left
+textLabel.Text = ";fly ;unfly ;kick ;fling ;spam ;unspam ;gui ;orbit ;unorbit   "
+
+-- Scroll loop
+coroutine.wrap(function()
+    local pos = 0
+    while true do
+        task.wait(0.02)
+        pos = pos - 2
+        if math.abs(pos) > textLabel.TextBounds.X then
+            pos = main.AbsoluteSize.X
+        end
+        textLabel.Position = UDim2.new(0, pos, 0, 0)
+    end
+end)()
+
+-- Näytä komentolista hetken päästä
 task.delay(7, function()
     dsgui:Destroy()
     commands.cmds()
