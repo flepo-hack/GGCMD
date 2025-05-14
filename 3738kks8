@@ -5,7 +5,6 @@ local RS = game:GetService("RunService")
 local char = plr.Character or plr.CharacterAdded:Wait()
 repeat task.wait() until char:FindFirstChild("HumanoidRootPart")
 
--- Ilmoitus
 local function notify(txt)
     pcall(function()
         game.StarterGui:SetCore("SendNotification", {
@@ -16,7 +15,6 @@ local function notify(txt)
     end)
 end
 
--- Pelaajahaku
 local function getPlayer(name)
     name = name:lower()
     for _, p in pairs(game.Players:GetPlayers()) do
@@ -26,11 +24,9 @@ local function getPlayer(name)
     end
 end
 
--- Komennot
 local commands = {}
-
--- FLY (kameraan perustuva liike)
 local flyConn
+
 commands.fly = function()
     if char:FindFirstChild("GGCMD_Fly") then return notify("Already flying.") end
 
@@ -96,42 +92,55 @@ commands.unfly = function()
     end
 end
 
--- KICK
+commands.kill = function(args)
+    local target = getPlayer(args[1])
+    if not target or not target.Character then return notify("Player not found.") end
+    local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.Health = 0
+        notify("Killed "..target.Name)
+    end
+end
+
+commands.tp = function(args)
+    local target = getPlayer(args[1])
+    if not target or not target.Character then return notify("Player not found.") end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    if root and targetRoot then
+        root.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
+        notify("Teleported to "..target.Name)
+    end
+end
+
+commands.teleport = commands.tp
+
 commands.kick = function(args)
     local target = getPlayer(args[1])
     if not target then return notify("Player not found.") end
-
     notify("Kicking "..target.Name)
-
     pcall(function()
         game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Beware of GGCMD", "All")
-    end)
-
-    pcall(function()
         target:Kick("Banned by Googlepoika")
     end)
 end
 
--- FLING
 commands.fling = function(args)
     local target = getPlayer(args[1])
     if not target or not target.Character then return notify("Player not found.") end
-
     local root = char:FindFirstChild("HumanoidRootPart")
     local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-    if not root or not targetRoot then return end
-
-    notify("Flinging "..target.Name)
-    root.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
-
-    local bav = Instance.new("BodyAngularVelocity", root)
-    bav.AngularVelocity = Vector3.new(0, 99999, 0)
-    bav.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
-    task.wait(1.5)
-    bav:Destroy()
+    if root and targetRoot then
+        notify("Flinging "..target.Name)
+        root.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
+        local bav = Instance.new("BodyAngularVelocity", root)
+        bav.AngularVelocity = Vector3.new(0, 99999, 0)
+        bav.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+        task.wait(1.5)
+        bav:Destroy()
+    end
 end
 
--- SPAM
 local spamConn
 commands.spam = function(args)
     if spamConn then spamConn:Disconnect() end
@@ -149,26 +158,17 @@ commands.unspam = function()
     end
 end
 
--- CMD LIST
 commands.cmds = function()
-    notify(";fly ;unfly ;kick ;fling ;spam ;unspam ;gui ;orbit ;unorbit")
+    notify(";fly ;unfly ;kill ;tp ;teleport ;kick ;fling ;spam ;unspam ;orbit ;unorbit")
 end
 
--- GUI
-commands.gui = function()
-    notify("GUI opened.")
-end
-
--- ORBIT
 local orbitConn
 commands.orbit = function(args)
     local target = getPlayer(args[1])
     if not target or not target.Character then return notify("Player not found.") end
-
     local root = char:FindFirstChild("HumanoidRootPart")
     local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
     if not root or not targetRoot then return end
-
     notify("Orbiting "..target.Name)
     local angle = 0
     orbitConn = RS.RenderStepped:Connect(function()
@@ -181,13 +181,10 @@ commands.orbit = function(args)
 end
 
 commands.unorbit = function()
-    if orbitConn then
-        orbitConn:Disconnect()
-        notify("Orbit OFF")
-    end
+    if orbitConn then orbitConn:Disconnect() notify("Orbit OFF") end
 end
 
--- CHAT-KOMENNOT
+-- CHAT KOMENNOT
 plr.Chatted:Connect(function(msg)
     if msg:sub(1,1) == ";" then
         local split = msg:sub(2):split(" ")
@@ -199,66 +196,33 @@ plr.Chatted:Connect(function(msg)
     end
 end)
 
--- GUI + DISCORD + CMDBAR
-local function showGUI()
-    notify("GGCMD v2 loaded.")
-end
-showGUI()
-
-local dsgui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
-dsgui.Name = "GGCMD_Discord"
-
-local text = Instance.new("TextBox", dsgui)
-text.Size = UDim2.new(0.4, 0, 0.05, 0)
-text.Position = UDim2.new(0.3, 0, 0.02, 0)
-text.BackgroundTransparency = 0.3
-text.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-text.TextColor3 = Color3.new(1, 1, 1)
-text.TextScaled = true
-text.Text = "https://discord.gg/nVhG6DDN"
-text.ClearTextOnFocus = false
-text.TextEditable = false
-text.Font = Enum.Font.SourceSansBold
-
 -- CMD BAR GUI
-local cmdGui = Instance.new("ScreenGui", plr.PlayerGui)
-cmdGui.Name = "GGCMD_CmdBar"
+local gui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
+gui.Name = "GGCMD_CmdBar"
 
-local main = Instance.new("Frame", cmdGui)
-main.Size = UDim2.new(0.5, 0, 0.05, 0)
-main.Position = UDim2.new(0.25, 0, 0.09, 0)
-main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-main.BackgroundTransparency = 0.2
-main.Active = true
-main.Draggable = true
-main.BorderSizePixel = 0
-main.ClipsDescendants = true
+local box = Instance.new("TextBox", gui)
+box.Size = UDim2.new(0.3, 0, 0.04, 0)
+box.Position = UDim2.new(0.35, 0, 0.95, 0)
+box.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+box.TextColor3 = Color3.new(1, 1, 1)
+box.PlaceholderText = ";command here"
+box.Font = Enum.Font.SourceSansBold
+box.TextScaled = true
+box.ClearTextOnFocus = true
 
-local textLabel = Instance.new("TextLabel", main)
-textLabel.Size = UDim2.new(10, 0, 1, 0)
-textLabel.Position = UDim2.new(0, 0, 0, 0)
-textLabel.TextColor3 = Color3.new(1, 1, 1)
-textLabel.BackgroundTransparency = 1
-textLabel.TextScaled = true
-textLabel.Font = Enum.Font.SourceSansBold
-textLabel.TextXAlignment = Enum.TextXAlignment.Left
-textLabel.Text = ";fly ;unfly ;kick ;fling ;spam ;unspam ;gui ;orbit ;unorbit   "
-
--- Scroll loop
-coroutine.wrap(function()
-    local pos = 0
-    while true do
-        task.wait(0.02)
-        pos = pos - 2
-        if math.abs(pos) > textLabel.TextBounds.X then
-            pos = main.AbsoluteSize.X
+box.FocusLost:Connect(function(enter)
+    if enter and box.Text ~= "" and box.Text:sub(1, 1) == ";" then
+        local split = box.Text:sub(2):split(" ")
+        local cmd = split[1]:lower()
+        table.remove(split, 1)
+        if commands[cmd] then
+            commands[cmd](split)
+        else
+            notify("Unknown command: "..cmd)
         end
-        textLabel.Position = UDim2.new(0, pos, 0, 0)
     end
-end)()
-
--- Näytä komentolista hetken päästä
-task.delay(7, function()
-    dsgui:Destroy()
-    commands.cmds()
+    box.Text = ""
 end)
+
+-- Latausilmoitus
+notify("GGCMD v2 loaded. Type commands into bottom bar.")
