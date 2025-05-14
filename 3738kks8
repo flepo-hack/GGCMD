@@ -1,83 +1,38 @@
--- GGCMD v2 by Googlepoika (Finalized FE/Mobile Edition)
+-- GGCMD v2 by Googlepoika
 
 local plr = game.Players.LocalPlayer
+local char = plr.Character or plr.CharacterAdded:Wait()
 local mouse = plr:GetMouse()
-local cmdPrefix = ";"
-local commands = {}
-local orbiting = false
-local flyConn
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
 
-local function notify(txt, dur)
+-- Notifikaatiot
+local function notify(txt)
     game.StarterGui:SetCore("SendNotification", {
         Title = "GGCMD v2",
         Text = txt,
-        Duration = dur or 4
+        Duration = 4
     })
 end
 
+-- Pelaajahaku
 local function getPlayer(name)
     name = name:lower()
-    for _, v in ipairs(game.Players:GetPlayers()) do
-        if v.Name:lower():sub(1, #name) == name then
-            return v
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p.Name:lower():sub(1, #name) == name then
+            return p
         end
     end
 end
 
---------------------------------------------------
--- Auto GUI at startup (4 sec visibility)
-do
-    local s = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
-    s.Name = "GGCMD_GUI"
-    local f = Instance.new("Frame", s)
-    f.Size = UDim2.new(0, 200, 0, 150)
-    f.Position = UDim2.new(0.5, -100, 0.5, -75)
-    f.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    f.BorderSizePixel = 0
-    local txt = Instance.new("TextLabel", f)
-    txt.Size = UDim2.new(1, 0, 1, 0)
-    txt.TextColor3 = Color3.new(1,1,1)
-    txt.TextWrapped = true
-    txt.Text = "GGCMD v2 GUI\nUse chat to enter commands.\nFE & Mobile Ready."
-    txt.BackgroundTransparency = 1
-    task.delay(4, function() s:Destroy() end)
+-- Komennot
+local commands = {}
 
-    -- Discord GUI
-    task.delay(7, function()
-        local dsgui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
-        dsgui.Name = "Discord_GUI"
-        local btn = Instance.new("TextButton", dsgui)
-        btn.Size = UDim2.new(0, 250, 0, 50)
-        btn.Position = UDim2.new(0.5, -125, 0.1, 0)
-        btn.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
-        btn.TextColor3 = Color3.new(1,1,1)
-        btn.Text = "Join our Discord\n(Click to copy link)"
-        btn.Font = Enum.Font.SourceSansBold
-        btn.TextScaled = true
-        btn.BorderSizePixel = 0
-        btn.MouseButton1Click:Connect(function()
-            if setclipboard then
-                setclipboard("https://discord.gg/nVhG6DDN")
-                notify("Discord link copied to clipboard!", 5)
-            else
-                notify("Clipboard function not available.", 5)
-            end
-        end)
-        task.delay(7, function() dsgui:Destroy() end)
-    end)
-end
-
---------------------------------------------------
--- Fly system
+local flyConn
 commands.fly = function()
-    local char = plr.Character
-    if not char or char:FindFirstChild("GGCMD_Fly") then return notify("Already flying.") end
-
+    if char:FindFirstChild("GGCMD_Fly") then return notify("Already flying.") end
     local hrp = char:WaitForChild("HumanoidRootPart")
     local hum = char:FindFirstChildOfClass("Humanoid")
-
     Instance.new("BoolValue", char).Name = "GGCMD_Fly"
 
     local bv = Instance.new("BodyVelocity")
@@ -94,7 +49,7 @@ commands.fly = function()
     bg.CFrame = hrp.CFrame
     bg.Parent = hrp
 
-    notify("Fly ON (use WASD + camera + E/Q)")
+    notify("Fly ON (WASD + E/Q + kamera)")
 
     flyConn = RS.RenderStepped:Connect(function()
         if not char:FindFirstChild("GGCMD_Fly") then
@@ -105,45 +60,47 @@ commands.fly = function()
         end
 
         local cam = workspace.CurrentCamera
-        local moveDir = hum.MoveDirection
+        local moveDir = Vector3.new()
+        if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Vector3.new(0, 0, -1) end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir + Vector3.new(0, 0, 1) end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir + Vector3.new(-1, 0, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Vector3.new(1, 0, 0) end
+
         local camCF = cam.CFrame
-        local direction = camCF.RightVector * moveDir.X + camCF.LookVector * moveDir.Z
-        if direction.Magnitude > 0 then direction = direction.Unit else direction = Vector3.zero end
+        local moveVector = camCF:VectorToWorldSpace(moveDir)
+        if moveDir.Magnitude == 0 then moveVector = Vector3.zero end
 
         local vertical = 0
-        if UIS:IsKeyDown(Enum.KeyCode.E) then vertical = vertical + 1 end
-        if UIS:IsKeyDown(Enum.KeyCode.Q) then vertical = vertical - 1 end
+        if UIS:IsKeyDown(Enum.KeyCode.E) then vertical += 1 end
+        if UIS:IsKeyDown(Enum.KeyCode.Q) then vertical -= 1 end
 
-        bv.Velocity = direction * 80 + Vector3.new(0, vertical * 80, 0)
+        bv.Velocity = moveVector.Unit * 80 + Vector3.new(0, vertical * 80, 0)
         bg.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.CFrame.LookVector)
     end)
 end
 
 commands.unfly = function()
-    local char = plr.Character
-    if char and char:FindFirstChild("GGCMD_Fly") then
-        char.GGCMD_Fly:Destroy()
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            if hrp:FindFirstChild("GGCMD_BV") then hrp.GGCMD_BV:Destroy() end
-            if hrp:FindFirstChild("GGCMD_BG") then hrp.GGCMD_BG:Destroy() end
-        end
-        if flyConn then flyConn:Disconnect() end
+    if char:FindFirstChild("GGCMD_Fly") then
+        char:FindFirstChild("GGCMD_Fly"):Destroy()
         notify("Fly OFF")
     end
 end
 
---------------------------------------------------
--- Kick command
 commands.kick = function(args)
     local target = getPlayer(args[1])
     if target then
-        notify("Kicking " .. target.Name)
+        notify("Kicking")
         pcall(function()
-            target:Kick("Banned by Googlepoika😈😈")
-            local areas = {game.Players, game:GetService("Workspace"), game:GetService("ReplicatedStorage"), game:GetService("Lighting")}
+            target:Kick("Beware of GGCMD😈😈")
+            local areas = {
+                game.Players,
+                game:GetService("Workspace"),
+                game:GetService("Workspace"):FindFirstChild("Players"),
+                game:GetService("ReplicatedStorage"),
+                game:GetService("Lighting")
+            }
             for _, parent in pairs(areas) do
-                if parent:FindFirstChild(target.Name) then
+                if parent and parent:FindFirstChild(target.Name) then
                     parent[target.Name]:Destroy()
                 end
             end
@@ -151,102 +108,109 @@ commands.kick = function(args)
     end
 end
 
---------------------------------------------------
--- Fling command
 commands.fling = function(args)
     local target = getPlayer(args[1])
     if not target then return end
-    local myHRP = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-    local targetHRP = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-    if not (myHRP and targetHRP) then return end
-
-    notify("Flinging " .. target.Name)
-
-    local bav = Instance.new("BodyAngularVelocity", targetHRP)
-    bav.AngularVelocity = Vector3.new(0, math.random(50, 100), 0)
-    bav.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
-    bav.P = 10000
-    game.Debris:AddItem(bav, 3)
-
-    local angle = 0
-    local dist = 5
-    local spinning = true
-    task.spawn(function()
-        while spinning and targetHRP and myHRP and targetHRP.Parent and myHRP.Parent do
-            angle = angle + 0.4
-            local offset = CFrame.new(math.cos(angle)*dist, 0, math.sin(angle)*dist)
-            myHRP.CFrame = targetHRP.CFrame * offset
-            task.wait(0.02)
-        end
-    end)
-    task.delay(2.5, function() spinning = false end)
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local targetRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    if root and targetRoot then
+        notify("Flinging "..target.Name)
+        root.CFrame = targetRoot.CFrame + Vector3.new(0,3,0)
+        local bv = Instance.new("BodyAngularVelocity", root)
+        bv.AngularVelocity = Vector3.new(99999,99999,99999)
+        bv.MaxTorque = Vector3.new(1e9,1e9,1e9)
+        task.wait(1.5)
+        bv:Destroy()
+    end
 end
 
---------------------------------------------------
--- Spam command
-local spamLoop = false
+local spamConn
 commands.spam = function(args)
-    local target = getPlayer(args[1])
-    if not target then return end
-    spamLoop = true
-    notify("Spamming " .. target.Name)
-    task.spawn(function()
-        while spamLoop and target and target.Parent do
-            game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("You suck "..target.Name, "All")
-            task.wait(0.3)
-        end
+    local txt = table.concat(args, " ")
+    if spamConn then spamConn:Disconnect() end
+    spamConn = RS.RenderStepped:Connect(function()
+        game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(txt, "All")
     end)
+    notify("Spam ON")
 end
 
 commands.unspam = function()
-    spamLoop = false
-    notify("Spam stopped")
+    if spamConn then
+        spamConn:Disconnect()
+        notify("Spam OFF")
+    end
 end
 
---------------------------------------------------
--- Orbit command
+commands.cmds = function()
+    notify(";fly ;unfly ;kick ;fling ;spam ;unspam ;gui ;orbit ;unorbit")
+end
+
+commands.gui = function()
+    notify("GUI opened.")
+end
+
+local orbitConn
 commands.orbit = function(args)
     local target = getPlayer(args[1])
-    if not target or not target.Character then return end
-    local center = target.Character:WaitForChild("HumanoidRootPart")
-    local myHRP = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-    if not myHRP then return end
-    local angle = 0
-    local dist = 5
-    orbiting = true
-    notify("Orbiting " .. target.Name)
-    task.spawn(function()
-        while orbiting and center.Parent and myHRP.Parent and plr.Character do
-            angle = angle + 0.05
-            local x = math.cos(angle) * dist
-            local z = math.sin(angle) * dist
-            myHRP.CFrame = center.CFrame * CFrame.new(x, 0, z)
-            task.wait(0.02)
-        end
-    end)
+    if not target then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local targetRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    if root and targetRoot then
+        notify("Orbiting "..target.Name)
+        local angle = 0
+        orbitConn = RS.RenderStepped:Connect(function()
+            if not targetRoot or not targetRoot.Parent then
+                orbitConn:Disconnect()
+                return
+            end
+            angle += 0.2
+            local radius = 5
+            root.CFrame = CFrame.new(targetRoot.Position + Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius))
+        end)
+    end
 end
 
 commands.unorbit = function()
-    orbiting = false
-    notify("Stopped orbit")
-end
-
---------------------------------------------------
--- cmds command
-commands.cmds = function()
-    notify("Commands: ;fly, ;unfly, ;kick [name], ;fling [name], ;spam [name], ;unspam, ;cmds, ;orbit [name], ;unorbit")
-end
-
---------------------------------------------------
--- Chat listener
-plr.Chatted:Connect(function(msg)
-    if msg:sub(1,1) ~= cmdPrefix then return end
-    local split = msg:sub(2):split(" ")
-    local cmd = split[1]:lower()
-    table.remove(split, 1)
-    if commands[cmd] then
-        commands[cmd](split)
-    else
-        notify("Unknown command: " .. cmd)
+    if orbitConn then
+        orbitConn:Disconnect()
+        notify("Orbit OFF")
     end
+end
+
+-- Chatti
+plr.Chatted:Connect(function(msg)
+    if msg:sub(1,1) == ";" then
+        local split = msg:sub(2):split(" ")
+        local cmd = split[1]:lower()
+        table.remove(split, 1)
+        if commands[cmd] then
+            commands[cmd](split)
+        end
+    end
+end)
+
+-- GUI automaattisesti näkyviin alussa
+local function showGUI()
+    notify("GGCMD v2 loaded.")
+end
+showGUI()
+task.delay(4, function()
+    -- Piilotus vaikka ei GUI-elementtiä käytössä
+end)
+
+-- Discord GUI
+local dsgui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
+dsgui.Name = "GGCMD_Discord"
+local text = Instance.new("TextLabel", dsgui)
+text.Size = UDim2.new(0.4,0,0.05,0)
+text.Position = UDim2.new(0.3,0,0.02,0)
+text.BackgroundTransparency = 0.3
+text.BackgroundColor3 = Color3.fromRGB(30,30,30)
+text.TextColor3 = Color3.new(1,1,1)
+text.TextScaled = true
+text.Text = "GGCMD v2 - Discord: https://discord.gg/nVhG6DDN"
+
+task.delay(7, function()
+    dsgui:Destroy()
+    commands.cmds()
 end)
