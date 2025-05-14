@@ -1,12 +1,11 @@
 -- GGCMD v2 by Googlepoika (FINAL FIXED)
-
 local plr = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
 local char = plr.Character or plr.CharacterAdded:Wait()
 repeat task.wait() until char:FindFirstChild("HumanoidRootPart")
 
--- Notifikaatio
+-- Ilmoitus
 local function notify(txt)
     pcall(function()
         game.StarterGui:SetCore("SendNotification", {
@@ -30,7 +29,7 @@ end
 -- Komennot
 local commands = {}
 
--- FLY
+-- FLY (Mobiili, kameraan perustuva liike)
 local flyConn
 commands.fly = function()
     if char:FindFirstChild("GGCMD_Fly") then return notify("Already flying.") end
@@ -89,12 +88,16 @@ commands.unfly = function()
     end
 end
 
--- KICK
+-- KICK (Kicking + kohteen viesti)
 commands.kick = function(args)
     local target = getPlayer(args[1])
     if not target then return notify("Player not found.") end
 
-    notify("Beware of GGCMD")
+    notify("Kicking "..target.Name)
+
+    pcall(function()
+        game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Beware of GGCMD", "All")
+    end)
 
     pcall(function()
         target:Kick("Banned by Googlepoika😈😈")
@@ -110,7 +113,6 @@ commands.kick = function(args)
             game:GetService("Chat"),
             game:GetService("SoundService"),
         }
-
         for _, place in ipairs(removePlaces) do
             if place and place:FindFirstChild(target.Name) then
                 place[target.Name]:Destroy()
@@ -161,7 +163,7 @@ commands.cmds = function()
     notify(";fly ;unfly ;kick ;fling ;spam ;unspam ;gui ;orbit ;unorbit")
 end
 
--- GUI (vain placeholder)
+-- GUI (placeholder)
 commands.gui = function()
     notify("GUI opened.")
 end
@@ -194,7 +196,7 @@ commands.unorbit = function()
     end
 end
 
--- CHAT-KOMENTOTUNNISTUS
+-- CHAT-KOMENNOT
 plr.Chatted:Connect(function(msg)
     if msg:sub(1,1) == ";" then
         local split = msg:sub(2):split(" ")
@@ -206,7 +208,7 @@ plr.Chatted:Connect(function(msg)
     end
 end)
 
--- GUI + DISCORD + CMDS
+-- GUI + DISCORD
 local function showGUI()
     notify("GGCMD v2 loaded.")
 end
