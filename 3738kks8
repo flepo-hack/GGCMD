@@ -43,15 +43,15 @@ do
     txt.Text = "GGCMD v2 GUI\nUse chat to enter commands.\nFE & Mobile Ready."
     txt.BackgroundTransparency = 1
     task.delay(4, function() s:Destroy() end)
-    
-    -- Discord GUI: Painettava painike, näkyy 7 sekunnin jälkeen
+
+    -- Discord GUI
     task.delay(7, function()
         local dsgui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
         dsgui.Name = "Discord_GUI"
         local btn = Instance.new("TextButton", dsgui)
         btn.Size = UDim2.new(0, 250, 0, 50)
         btn.Position = UDim2.new(0.5, -125, 0.1, 0)
-        btn.BackgroundColor3 = Color3.fromRGB(114, 137, 218)  -- Discord-bluish
+        btn.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
         btn.TextColor3 = Color3.new(1,1,1)
         btn.Text = "Join our Discord\n(Click to copy link)"
         btn.Font = Enum.Font.SourceSansBold
@@ -70,14 +70,14 @@ do
 end
 
 --------------------------------------------------
--- Fly system (käyttäjän ohjaama, mukana E (ylös) ja Q (alas))
+-- Fly system
 commands.fly = function()
     local char = plr.Character
     if not char or char:FindFirstChild("GGCMD_Fly") then return notify("Already flying.") end
 
     local hrp = char:WaitForChild("HumanoidRootPart")
     local hum = char:FindFirstChildOfClass("Humanoid")
-    
+
     Instance.new("BoolValue", char).Name = "GGCMD_Fly"
 
     local bv = Instance.new("BodyVelocity")
@@ -94,7 +94,7 @@ commands.fly = function()
     bg.CFrame = hrp.CFrame
     bg.Parent = hrp
 
-    notify("Fly ON (use WASD for horizontal, E/Q for vertical)")
+    notify("Fly ON (use WASD + camera + E/Q)")
 
     flyConn = RS.RenderStepped:Connect(function()
         if not char:FindFirstChild("GGCMD_Fly") then
@@ -107,16 +107,15 @@ commands.fly = function()
         local cam = workspace.CurrentCamera
         local moveDir = hum.MoveDirection
         local camCF = cam.CFrame
-        local horizontal = (camCF.RightVector * moveDir.X + camCF.LookVector * moveDir.Z)
-        local direction = horizontal.Unit
-        if horizontal.Magnitude == 0 then direction = Vector3.new(0,0,0) end
+        local direction = camCF.RightVector * moveDir.X + camCF.LookVector * moveDir.Z
+        if direction.Magnitude > 0 then direction = direction.Unit else direction = Vector3.zero end
 
         local vertical = 0
         if UIS:IsKeyDown(Enum.KeyCode.E) then vertical = vertical + 1 end
         if UIS:IsKeyDown(Enum.KeyCode.Q) then vertical = vertical - 1 end
 
         bv.Velocity = direction * 80 + Vector3.new(0, vertical * 80, 0)
-        bg.CFrame = cam.CFrame
+        bg.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.CFrame.LookVector)
     end)
 end
 
@@ -135,7 +134,7 @@ commands.unfly = function()
 end
 
 --------------------------------------------------
--- Kick command (poistaa pelaajan useista kohteista)
+-- Kick command
 commands.kick = function(args)
     local target = getPlayer(args[1])
     if target then
@@ -153,7 +152,7 @@ commands.kick = function(args)
 end
 
 --------------------------------------------------
--- Fling command (flingaa kohteen, lisää pyörivää voimaa kohteeseen)
+-- Fling command
 commands.fling = function(args)
     local target = getPlayer(args[1])
     if not target then return end
@@ -162,15 +161,13 @@ commands.fling = function(args)
     if not (myHRP and targetHRP) then return end
 
     notify("Flinging " .. target.Name)
-    
-    -- Lisää kohteeseen pyörivä voima
+
     local bav = Instance.new("BodyAngularVelocity", targetHRP)
     bav.AngularVelocity = Vector3.new(0, math.random(50, 100), 0)
     bav.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
     bav.P = 10000
     game.Debris:AddItem(bav, 3)
-    
-    -- Paikallinen pelaaja pyörii kohteen ympärillä flingauksen ajaksi
+
     local angle = 0
     local dist = 5
     local spinning = true
@@ -235,7 +232,7 @@ commands.unorbit = function()
 end
 
 --------------------------------------------------
--- cmds command: Näyttää käytettävissä olevat komennot
+-- cmds command
 commands.cmds = function()
     notify("Commands: ;fly, ;unfly, ;kick [name], ;fling [name], ;spam [name], ;unspam, ;cmds, ;orbit [name], ;unorbit")
 end
