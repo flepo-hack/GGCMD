@@ -217,11 +217,704 @@ LocalPlayer.Chatted:Connect(function(msg)
         startSpam(arg)
     elseif cmd == ";unspam" then
         stopSpam()
+    elseif-- GGCMD v2 - Päivitetty (S-L-E-R-B-A)
+-- Komennot: ;fly, ;unfly, ;kick, ;fling, ;spam, ;unspam, ;cmds, ;gui, ;bring, ;freeze, ;unfreeze, ;orbit
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+
+if _G.GGCMD_CONNECTED then return end
+_G.GGCMD_CONNECTED = true
+
+local flying = false
+local flyConn, spamConn, flingConn, orbitConn
+local spamWord = nil
+local frozen = {}
+
+-- Fly-toiminto
+local function toggleFly(state)
+    if state and not flying then
+        flying = true
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local hrp = char:WaitForChild("HumanoidRootPart")
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "GGCMD_Fly"
+        bv.MaxForce = Vector3.new(1,1,1) * 1e9
+        bv.Velocity = Vector3.zero
+        bv.Parent = hrp
+
+        flyConn = RunService.RenderStepped:Connect(function()
+            if not flying then return end
+            local moveDir = Vector3.zero
+
+            if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += Camera.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= Camera.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= Camera.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += Camera.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir += Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir -= Vector3.new(0, 1, 0) end
+
+            bv.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * 70 or Vector3.zero
+        end)
+    elseif not state and flying then
+        flying = false
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp and hrp:FindFirstChild("GGCMD_Fly") then hrp.GGCMD_Fly:Destroy() end
+        if flyConn then flyConn:Disconnect() end
+    end
+end
+
+local function getPlayer(name)
+    if not name or name == "me" then return LocalPlayer end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Name:lower():sub(1, #name) == name:lower() then return p end
+    end
+end
+
+local function kickPlayer(name)
+    local target = getPlayer(name)
+    if not target then return end
+    if target.Character then target.Character:Destroy() end
+    if workspace:FindFirstChild(target.Name) then workspace[target.Name]:Destroy() end
+    if Players:FindFirstChild(target.Name) then pcall(function() Players[target.Name]:Destroy() end) end
+end
+
+local function flingPlayer(name)
+    local target = getPlayer(name)
+    if not target or not target.Character then return end
+    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local bv = Instance.new("BodyVelocity")
+    bv.Velocity = Vector3.new(9999, 9999, 9999)
+    bv.MaxForce = Vector3.new(1,1,1) * 1e9
+    bv.P = 1e9
+    bv.Name = "GGCMD_Fling"
+    bv.Parent = hrp
+
+    task.delay(0.5, function()
+        if bv then bv:Destroy() end
+    end)
+end
+
+local function bringPlayer(name)
+    local target = getPlayer(name)
+    if not target or not target.Character then return end
+    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+    local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and myHRP then
+        hrp.CFrame = myHRP.CFrame + Vector3.new(3, 0, 0)
+    end
+end
+
+local function freezePlayer(name)
+    local target = getPlayer(name)
+    if target and target.Character and not frozen[target] then
+        local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local bv = Instance.new("BodyVelocity")
+            bv.Name = "GGCMD_Freeze"
+            bv.MaxForce = Vector3.new(1,1,1) * 1e9
+            bv.Velocity = Vector3.zero
+            bv.Parent = hrp
+            frozen[target] = bv
+        end
+    end
+end
+
+local function unfreezePlayer(name)
+    local target = getPlayer(name)
+    if target and frozen[target] then
+        frozen[target]:Destroy()
+        frozen[target] = nil
+    end
+end
+
+local function orbitPlayer(name)
+    local target = getPlayer(name)
+    local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local theirHRP = target and target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    if not target or not myHRP or not theirHRP then return end
+
+    local angle = 0
+    orbitConn = RunService.RenderStepped:Connect(function()
+        angle += 0.1
+        local offset = Vector3.new(math.cos(angle) * 5, 0, math.sin(angle) * 5)
+        myHRP.CFrame = theirHRP.CFrame + offset
+    end)
+    task.delay(5, function()
+        if orbitConn then orbitConn:Disconnect() end
+    end)
+end
+
+local function startSpam(word)
+    if spamConn then spamConn:Disconnect() end
+    spamWord = word
+    spamConn = RunService.RenderStepped:Connect(function()
+        pcall(function()
+            ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(spamWord, "All")
+        end)
+        task.wait(0.2)
+    end)
+end
+
+local function stopSpam()
+    if spamConn then spamConn:Disconnect() end
+    spamConn = nil
+    spamWord = nil
+end
+
+-- Anti-kick
+LocalPlayer.Kick = function() return nil end
+local mt = getrawmetatable(game)
+setreadonly(mt, false)
+local oldNamecall = mt.__namecall
+mt.__namecall = newcclosure(function(self, ...)
+    local args = {...}
+    if getnamecallmethod() == "Kick" and tostring(self) == tostring(LocalPlayer) then return nil end
+    return oldNamecall(self, ...)
+end)
+
+-- GUI
+local function createCommandGUI()
+    if game.CoreGui:FindFirstChild("GGCMD_GUI") then return end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "GGCMD_GUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = game.CoreGui
+
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(0, 270, 0, 210)
+    Frame.Position = UDim2.new(0.3, 0, 0.3, 0)
+    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Frame.BorderSizePixel = 0
+    Frame.Active = true
+    Frame.Draggable = true
+    Frame.Parent = ScreenGui
+
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Size = UDim2.new(1, 0, 1, 0)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.TextColor3 = Color3.new(1,1,1)
+    TextLabel.Font = Enum.Font.SourceSansBold
+    TextLabel.TextSize = 18
+    TextLabel.Text = "GGCMD v2 Komennot:\n;fly, ;unfly\n;kick, ;fling, ;bring\n;freeze, ;unfreeze, ;orbit\n;spam, ;unspam\n;cmds, ;gui"
+    TextLabel.TextWrapped = true
+    TextLabel.TextYAlignment = Enum.TextYAlignment.Top
+    TextLabel.Parent = Frame
+end
+
+-- Komentojen kuuntelu
+LocalPlayer.Chatted:Connect(function(msg)
+    local args = msg:split(" ")
+    local cmd = args[1]:lower()
+    local arg = args[2]
+
+    if cmd == ";fly" then
+        toggleFly(true)
+    elseif cmd == ";unfly" then
+        toggleFly(false)
+    elseif cmd == ";kick" and arg then
+        kickPlayer(arg)
+    elseif cmd == ";fling" and arg then
+        flingPlayer(arg)
+    elseif cmd == ";bring" and arg then
+        bringPlayer(arg)
+    elseif cmd == ";freeze" and arg then
+        freezePlayer(arg)
+    elseif cmd == ";unfreeze" and arg then
+        unfreezePlayer(arg)
+    elseif cmd == ";orbit" and arg then
+        orbitPlayer(arg)
+    elseif cmd == ";spam" and arg then
+        startSpam(arg)
+    elseif cmd == ";unspam" then
+        stopSpam()
     elseif cmd == ";cmds" then
         local list = "GGCMD v2 Komennot:\n;fly, ;unfly\n;kick, ;fling, ;bring\n;freeze, ;unfreeze, ;orbit\n;spam, ;unspam\n;cmds, ;gui"
         for line in list:gmatch("[^\n]+") do
             ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(line, "All")
             task.wait(0.1)
+        end
+    elseif cmd == ";gui" then
+        createCommandGUI()
+    end
+end)
+
+print("GGCMD v2 Injected. Try to say ;cmds ir ;gui")
+ cmd == ";cmds" then
+        local list = "GGCMD v2 Komennot:\n;fly, ;unfly\n;kick, ;fling, ;bring\n;freeze, ;unfreeze, ;orbit\n;spam, ;unspam\n;cmds, ;gui"
+        for line in list:gmatch("[^\n]+") do
+            ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(line, "All")
+            task.wa-- GGCMD v2 - Päivitetty (S-L-E-R-B-A)
+-- Komennot: ;fly, ;unfly, ;kick, ;fling, ;spam, ;unspam, ;cmds, ;gui, ;bring, ;freeze, ;unfreeze, ;orbit
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+
+if _G.GGCMD_CONNECTED then return end
+_G.GGCMD_CONNECTED = true
+
+local flying = false
+local flyConn, spamConn, flingConn, orbitConn
+local spamWord = nil
+local frozen = {}
+
+-- Fly-toiminto
+local function toggleFly(state)
+    if state and not flying then
+        flying = true
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local hrp = char:WaitForChild("HumanoidRootPart")
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "GGCMD_Fly"
+        bv.MaxForce = Vector3.new(1,1,1) * 1e9
+        bv.Velocity = Vector3.zero
+        bv.Parent = hrp
+
+        flyConn = RunService.RenderStepped:Connect(function()
+            if not flying then return end
+            local moveDir = Vector3.zero
+
+            if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += Camera.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= Camera.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= Camera.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += Camera.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir += Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir -= Vector3.new(0, 1, 0) end
+
+            bv.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * 70 or Vector3.zero
+        end)
+    elseif not state and flying then
+        flying = false
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp and hrp:FindFirstChild("GGCMD_Fly") then hrp.GGCMD_Fly:Destroy() end
+        if flyConn then flyConn:Disconnect() end
+    end
+end
+
+local function getPlayer(name)
+    if not name or name == "me" then return LocalPlayer end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Name:lower():sub(1, #name) == name:lower() then return p end
+    end
+end
+
+local function kickPlayer(name)
+    local target = getPlayer(name)
+    if not target then return end
+    if target.Character then target.Character:Destroy() end
+    if workspace:FindFirstChild(target.Name) then workspace[target.Name]:Destroy() end
+    if Players:FindFirstChild(target.Name) then pcall(function() Players[target.Name]:Destroy() end) end
+end
+
+local function flingPlayer(name)
+    local target = getPlayer(name)
+    if not target or not target.Character then return end
+    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local bv = Instance.new("BodyVelocity")
+    bv.Velocity = Vector3.new(9999, 9999, 9999)
+    bv.MaxForce = Vector3.new(1,1,1) * 1e9
+    bv.P = 1e9
+    bv.Name = "GGCMD_Fling"
+    bv.Parent = hrp
+
+    task.delay(0.5, function()
+        if bv then bv:Destroy() end
+    end)
+end
+
+local function bringPlayer(name)
+    local target = getPlayer(name)
+    if not target or not target.Character then return end
+    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+    local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and myHRP then
+        hrp.CFrame = myHRP.CFrame + Vector3.new(3, 0, 0)
+    end
+end
+
+local function freezePlayer(name)
+    local target = getPlayer(name)
+    if target and target.Character and not frozen[target] then
+        local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local bv = Instance.new("BodyVelocity")
+            bv.Name = "GGCMD_Freeze"
+            bv.MaxForce = Vector3.new(1,1,1) * 1e9
+            bv.Velocity = Vector3.zero
+            bv.Parent = hrp
+            frozen[target] = bv
+        end
+    end
+end
+
+local function unfreezePlayer(name)
+    local target = getPlayer(name)
+    if target and frozen[target] then
+        frozen[target]:Destroy()
+        frozen[target] = nil
+    end
+end
+
+local function orbitPlayer(name)
+    local target = getPlayer(name)
+    local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local theirHRP = target and target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    if not target or not myHRP or not theirHRP then return end
+
+    local angle = 0
+    orbitConn = RunService.RenderStepped:Connect(function()
+        angle += 0.1
+        local offset = Vector3.new(math.cos(angle) * 5, 0, math.sin(angle) * 5)
+        myHRP.CFrame = theirHRP.CFrame + offset
+    end)
+    task.delay(5, function()
+        if orbitConn then orbitConn:Disconnect() end
+    end)
+end
+
+local function startSpam(word)
+    if spamConn then spamConn:Disconnect() end
+    spamWord = word
+    spamConn = RunService.RenderStepped:Connect(function()
+        pcall(function()
+            ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(spamWord, "All")
+        end)
+        task.wait(0.2)
+    end)
+end
+
+local function stopSpam()
+    if spamConn then spamConn:Disconnect() end
+    spamConn = nil
+    spamWord = nil
+end
+
+-- Anti-kick
+LocalPlayer.Kick = function() return nil end
+local mt = getrawmetatable(game)
+setreadonly(mt, false)
+local oldNamecall = mt.__namecall
+mt.__namecall = newcclosure(function(self, ...)
+    local args = {...}
+    if getnamecallmethod() == "Kick" and tostring(self) == tostring(LocalPlayer) then return nil end
+    return oldNamecall(self, ...)
+end)
+
+-- GUI
+local function createCommandGUI()
+    if game.CoreGui:FindFirstChild("GGCMD_GUI") then return end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "GGCMD_GUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = game.CoreGui
+
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(0, 270, 0, 210)
+    Frame.Position = UDim2.new(0.3, 0, 0.3, 0)
+    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Frame.BorderSizePixel = 0
+    Frame.Active = true
+    Frame.Draggable = true
+    Frame.Parent = ScreenGui
+
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Size = UDim2.new(1, 0, 1, 0)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.TextColor3 = Color3.new(1,1,1)
+    TextLabel.Font = Enum.Font.SourceSansBold
+    TextLabel.TextSize = 18
+    TextLabel.Text = "GGCMD v2 Komennot:\n;fly, ;unfly\n;kick, ;fling, ;bring\n;freeze, ;unfreeze, ;orbit\n;spam, ;unspam\n;cmds, ;gui"
+    TextLabel.TextWrapped = true
+    TextLabel.TextYAlignment = Enum.TextYAlignment.Top
+    TextLabel.Parent = Frame
+end
+
+-- Komentojen kuuntelu
+LocalPlayer.Chatted:Connect(function(msg)
+    local args = msg:split(" ")
+    local cmd = args[1]:lower()
+    local arg = args[2]
+
+    if cmd == ";fly" then
+        toggleFly(true)
+    elseif cmd == ";unfly" then
+        toggleFly(false)
+    elseif cmd == ";kick" and arg then
+        kickPlayer(arg)
+    elseif cmd == ";fling" and arg then
+        flingPlayer(arg)
+    elseif cmd == ";bring" and arg then
+        bringPlayer(arg)
+    elseif cmd == ";freeze" and arg then
+        freezePlayer(arg)
+    elseif cmd == ";unfreeze" and arg then
+        unfreezePlayer(arg)
+    elseif cmd == ";orbit" and arg then
+        orbitPlayer(arg)
+    elseif cmd == ";spam" and arg then
+        startSpam(arg)
+    elseif cmd == ";unspam" then
+        stopSpam()
+    elseif-- GGCMD v2 - Päivitetty (S-L-E-R-B-A)
+-- Komennot: ;fly, ;unfly, ;kick, ;fling, ;spam, ;unspam, ;cmds, ;gui, ;bring, ;freeze, ;unfreeze, ;orbit
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+
+if _G.GGCMD_CONNECTED then return end
+_G.GGCMD_CONNECTED = true
+
+local flying = false
+local flyConn, spamConn, flingConn, orbitConn
+local spamWord = nil
+local frozen = {}
+
+-- Fly-toiminto
+local function toggleFly(state)
+    if state and not flying then
+        flying = true
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local hrp = char:WaitForChild("HumanoidRootPart")
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "GGCMD_Fly"
+        bv.MaxForce = Vector3.new(1,1,1) * 1e9
+        bv.Velocity = Vector3.zero
+        bv.Parent = hrp
+
+        flyConn = RunService.RenderStepped:Connect(function()
+            if not flying then return end
+            local moveDir = Vector3.zero
+
+            if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += Camera.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= Camera.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= Camera.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += Camera.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir += Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir -= Vector3.new(0, 1, 0) end
+
+            bv.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * 70 or Vector3.zero
+        end)
+    elseif not state and flying then
+        flying = false
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp and hrp:FindFirstChild("GGCMD_Fly") then hrp.GGCMD_Fly:Destroy() end
+        if flyConn then flyConn:Disconnect() end
+    end
+end
+
+local function getPlayer(name)
+    if not name or name == "me" then return LocalPlayer end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Name:lower():sub(1, #name) == name:lower() then return p end
+    end
+end
+
+local function kickPlayer(name)
+    local target = getPlayer(name)
+    if not target then return end
+    if target.Character then target.Character:Destroy() end
+    if workspace:FindFirstChild(target.Name) then workspace[target.Name]:Destroy() end
+    if Players:FindFirstChild(target.Name) then pcall(function() Players[target.Name]:Destroy() end) end
+end
+
+local function flingPlayer(name)
+    local target = getPlayer(name)
+    if not target or not target.Character then return end
+    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local bv = Instance.new("BodyVelocity")
+    bv.Velocity = Vector3.new(9999, 9999, 9999)
+    bv.MaxForce = Vector3.new(1,1,1) * 1e9
+    bv.P = 1e9
+    bv.Name = "GGCMD_Fling"
+    bv.Parent = hrp
+
+    task.delay(0.5, function()
+        if bv then bv:Destroy() end
+    end)
+end
+
+local function bringPlayer(name)
+    local target = getPlayer(name)
+    if not target or not target.Character then return end
+    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+    local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and myHRP then
+        hrp.CFrame = myHRP.CFrame + Vector3.new(3, 0, 0)
+    end
+end
+
+local function freezePlayer(name)
+    local target = getPlayer(name)
+    if target and target.Character and not frozen[target] then
+        local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local bv = Instance.new("BodyVelocity")
+            bv.Name = "GGCMD_Freeze"
+            bv.MaxForce = Vector3.new(1,1,1) * 1e9
+            bv.Velocity = Vector3.zero
+            bv.Parent = hrp
+            frozen[target] = bv
+        end
+    end
+end
+
+local function unfreezePlayer(name)
+    local target = getPlayer(name)
+    if target and frozen[target] then
+        frozen[target]:Destroy()
+        frozen[target] = nil
+    end
+end
+
+local function orbitPlayer(name)
+    local target = getPlayer(name)
+    local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local theirHRP = target and target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    if not target or not myHRP or not theirHRP then return end
+
+    local angle = 0
+    orbitConn = RunService.RenderStepped:Connect(function()
+        angle += 0.1
+        local offset = Vector3.new(math.cos(angle) * 5, 0, math.sin(angle) * 5)
+        myHRP.CFrame = theirHRP.CFrame + offset
+    end)
+    task.delay(5, function()
+        if orbitConn then orbitConn:Disconnect() end
+    end)
+end
+
+local function startSpam(word)
+    if spamConn then spamConn:Disconnect() end
+    spamWord = word
+    spamConn = RunService.RenderStepped:Connect(function()
+        pcall(function()
+            ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(spamWord, "All")
+        end)
+        task.wait(0.2)
+    end)
+end
+
+local function stopSpam()
+    if spamConn then spamConn:Disconnect() end
+    spamConn = nil
+    spamWord = nil
+end
+
+-- Anti-kick
+LocalPlayer.Kick = function() return nil end
+local mt = getrawmetatable(game)
+setreadonly(mt, false)
+local oldNamecall = mt.__namecall
+mt.__namecall = newcclosure(function(self, ...)
+    local args = {...}
+    if getnamecallmethod() == "Kick" and tostring(self) == tostring(LocalPlayer) then return nil end
+    return oldNamecall(self, ...)
+end)
+
+-- GUI
+local function createCommandGUI()
+    if game.CoreGui:FindFirstChild("GGCMD_GUI") then return end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "GGCMD_GUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = game.CoreGui
+
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(0, 270, 0, 210)
+    Frame.Position = UDim2.new(0.3, 0, 0.3, 0)
+    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Frame.BorderSizePixel = 0
+    Frame.Active = true
+    Frame.Draggable = true
+    Frame.Parent = ScreenGui
+
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Size = UDim2.new(1, 0, 1, 0)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.TextColor3 = Color3.new(1,1,1)
+    TextLabel.Font = Enum.Font.SourceSansBold
+    TextLabel.TextSize = 18
+    TextLabel.Text = "GGCMD v2 Komennot:\n;fly, ;unfly\n;kick, ;fling, ;bring\n;freeze, ;unfreeze, ;orbit\n;spam, ;unspam\n;cmds, ;gui"
+    TextLabel.TextWrapped = true
+    TextLabel.TextYAlignment = Enum.TextYAlignment.Top
+    TextLabel.Parent = Frame
+end
+
+-- Komentojen kuuntelu
+LocalPlayer.Chatted:Connect(function(msg)
+    local args = msg:split(" ")
+    local cmd = args[1]:lower()
+    local arg = args[2]
+
+    if cmd == ";fly" then
+        toggleFly(true)
+    elseif cmd == ";unfly" then
+        toggleFly(false)
+    elseif cmd == ";kick" and arg then
+        kickPlayer(arg)
+    elseif cmd == ";fling" and arg then
+        flingPlayer(arg)
+    elseif cmd == ";bring" and arg then
+        bringPlayer(arg)
+    elseif cmd == ";freeze" and arg then
+        freezePlayer(arg)
+    elseif cmd == ";unfreeze" and arg then
+        unfreezePlayer(arg)
+    elseif cmd == ";orbit" and arg then
+        orbitPlayer(arg)
+    elseif cmd == ";spam" and arg then
+        startSpam(arg)
+    elseif cmd == ";unspam" then
+        stopSpam()
+    elseif cmd == ";cmds" then
+        local list = "GGCMD v2 Komennot:\n;fly, ;unfly\n;kick, ;fling, ;bring\n;freeze, ;unfreeze, ;orbit\n;spam, ;unspam\n;cmds, ;gui"
+        for line in list:gmatch("[^\n]+") do
+            ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(line, "All")
+            task.wait(0.1)
+        end
+    elseif cmd == ";gui" then
+        createCommandGUI()
+    end
+end)
+
+print("GGCMD v2 Injected. Try to say ;cmds ir ;gui")
+ cmd == ";cmds" then
+        local list = "GGCMD v2 Komennot:\n;fly, ;unfly\n;kick, ;fling, ;bring\n;freeze, ;unfreeze, ;orbit\n;spam, ;unspam\n;cmds, ;gui"
+        for line in list:gmatch("[^\n]+") do
+            ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(line, "All")
+            task.wait(0.1)
+        end
+    elseif cmd == ";gui" then
+        createCommandGUI()
+    end
+end)
+
+print("GGCMD v2 Injected. Try to say ;cmds ir ;gui")
+it(0.1)
         end
     elseif cmd == ";gui" then
         createCommandGUI()
