@@ -1,4 +1,4 @@
--- GGCMD v2 by Googlepoika (FINAL FIXED)
+-- GGCMD v2 by Googlepoika (FIXED & MOBILE FRIENDLY + DRAGGABLE + DISCORD NOTIFY)
 local plr = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
@@ -47,9 +47,10 @@ commands.fly = function()
     bg.CFrame = hrp.CFrame
     bg.Parent = hrp
 
+    local speed = 80
     notify("Fly ON (WASD + E/Q + kamera)")
 
-    flyConn = RS.RenderStepped:Connect(function()
+    flyConn = RS.Heartbeat:Connect(function()
         if not char or not char:FindFirstChild("GGCMD_Fly") then
             if flyConn then flyConn:Disconnect() end
             bv:Destroy()
@@ -60,15 +61,17 @@ commands.fly = function()
         local cam = workspace.CurrentCamera
         local moveDir = Vector3.zero
 
-        if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += cam.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= cam.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= cam.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += cam.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.E) then moveDir += Vector3.new(0, 1, 0) end
-        if UIS:IsKeyDown(Enum.KeyCode.Q) then moveDir -= Vector3.new(0, 1, 0) end
+        pcall(function()
+            if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += cam.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= cam.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= cam.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += cam.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.E) then moveDir += Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.Q) then moveDir -= Vector3.new(0, 1, 0) end
+        end)
 
         if moveDir.Magnitude > 0 then
-            bv.Velocity = moveDir.Unit * 80
+            bv.Velocity = moveDir.Unit * speed
         else
             bv.Velocity = Vector3.zero
         end
@@ -94,22 +97,28 @@ end
 
 commands.kill = function(args)
     local target = getPlayer(args[1])
-    if not target or not target.Character then return notify("Player not found.") end
+    if not target then return notify("Player not found.") end
+    if not target.Character then target.CharacterAdded:Wait() end
     local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
     if humanoid then
         humanoid.Health = 0
         notify("Killed "..target.Name)
+    else
+        notify("No humanoid found.")
     end
 end
 
 commands.tp = function(args)
     local target = getPlayer(args[1])
-    if not target or not target.Character then return notify("Player not found.") end
+    if not target then return notify("Player not found.") end
+    if not target.Character then target.CharacterAdded:Wait() end
     local root = char:FindFirstChild("HumanoidRootPart")
     local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
     if root and targetRoot then
         root.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
         notify("Teleported to "..target.Name)
+    else
+        notify("Failed to teleport.")
     end
 end
 
@@ -202,7 +211,7 @@ gui.Name = "GGCMD_CmdBar"
 
 local box = Instance.new("TextBox", gui)
 box.Size = UDim2.new(0.3, 0, 0.04, 0)
-box.Position = UDim2.new(0.35, 0, 0.95, 0)
+box.Position = UDim2.new(0.35, 0, 0.85, 0)
 box.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 box.TextColor3 = Color3.new(1, 1, 1)
 box.PlaceholderText = ";command here"
@@ -224,5 +233,44 @@ box.FocusLost:Connect(function(enter)
     box.Text = ""
 end)
 
--- Latausilmoitus
+-- DRAGGABLE CMD BAR
+local dragging, dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    box.Position = UDim2.new(
+        0, startPos.X.Offset + delta.X,
+        0, startPos.Y.Offset + delta.Y
+    )
+end
+
+box.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = box.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+box.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- Ilmoitukset latauksesta
 notify("GGCMD v2 loaded. Type commands into bottom bar.")
+notify("cmds: ;fly ;unfly ;kill ;tp ;teleport ;kick ;fling ;spam ;unspam ;orbit ;unorbit")
+notify("Join GGCMD Discord: discord.gg/nVhG6DDN")
