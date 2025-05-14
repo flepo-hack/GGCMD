@@ -84,6 +84,14 @@ end
 commands.unfly = function()
     if char:FindFirstChild("GGCMD_Fly") then
         char.GGCMD_Fly:Destroy()
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local bv = hrp:FindFirstChild("GGCMD_BV")
+            local bg = hrp:FindFirstChild("GGCMD_BG")
+            if bv then bv:Destroy() end
+            if bg then bg:Destroy() end
+        end
+        if flyConn then flyConn:Disconnect() flyConn = nil end
         notify("Fly OFF")
     end
 end
