@@ -17,7 +17,7 @@ local function notify(txt)
     })
 end
 
--- Helper functions
+-- Helper
 local function getPlayer(name)
     name = name:lower()
     for _, v in pairs(game.Players:GetPlayers()) do
@@ -27,47 +27,61 @@ local function getPlayer(name)
     end
 end
 
--- Command functions
+-- Fly
 commands.fly = function()
     local char = plr.Character
     if not char then return end
     local hrp = char:WaitForChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+
+    if char:FindFirstChild("GGCMD_Fly") then return notify("Already flying.") end
+
     local bv = Instance.new("BodyVelocity")
-    bv.Name = "GGCMD_Fly"
+    local bg = Instance.new("BodyGyro")
+    local part = Instance.new("BoolValue", char)
+    part.Name = "GGCMD_Fly"
+
+    bv.Name = "GGCMD_BV"
+    bg.Name = "GGCMD_BG"
+
     bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
     bv.Velocity = Vector3.zero
+    bv.P = 1250
     bv.Parent = hrp
 
-    local flying = true
-    notify("Fly ON (WASD or thumbstick to move)")
-    local conn = game:GetService("RunService").RenderStepped:Connect(function()
-        if not flying or not bv or not hrp then return end
-        local cam = workspace.CurrentCamera
-        local dir = Vector3.zero
-        if plr.Character:FindFirstChildOfClass("Humanoid").MoveDirection.Magnitude > 0 then
-            dir = cam.CFrame:VectorToWorldSpace(plr.Character:FindFirstChildOfClass("Humanoid").MoveDirection) * 70
-        end
-        bv.Velocity = dir
-    end)
+    bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+    bg.P = 3000
+    bg.CFrame = hrp.CFrame
+    bg.Parent = hrp
 
-    mouse.KeyDown:Connect(function(k)
-        if k == "e" then
-            flying = false
-            bv:Destroy()
+    notify("Fly ON (use movement controls)")
+
+    local conn
+    conn = game:GetService("RunService").RenderStepped:Connect(function()
+        if not char:FindFirstChild("GGCMD_Fly") then
             conn:Disconnect()
-            notify("Fly OFF")
+            bv:Destroy()
+            bg:Destroy()
+            return
         end
+        local move = hum.MoveDirection
+        bv.Velocity = move * 80
+        bg.CFrame = workspace.CurrentCamera.CFrame
     end)
 end
 
 commands.unfly = function()
     local char = plr.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        local bv = char.HumanoidRootPart:FindFirstChild("GGCMD_Fly")
-        if bv then
-            bv:Destroy()
-            notify("Fly OFF")
+    if char and char:FindFirstChild("GGCMD_Fly") then
+        char:FindFirstChild("GGCMD_Fly"):Destroy()
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local bv = hrp:FindFirstChild("GGCMD_BV")
+            local bg = hrp:FindFirstChild("GGCMD_BG")
+            if bv then bv:Destroy() end
+            if bg then bg:Destroy() end
         end
+        notify("Fly OFF")
     end
 end
 
@@ -81,29 +95,30 @@ end
 commands.fling = function(args)
     local target = getPlayer(args[1])
     if not target then return end
-    local chr = plr.Character
     local targetHRP = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-    if chr and targetHRP then
-        local bv = Instance.new("BodyVelocity", targetHRP)
-        bv.Velocity = Vector3.new(9999,9999,9999)
-        bv.MaxForce = Vector3.new(1e5,1e5,1e5)
+    if targetHRP then
+        local bv = Instance.new("BodyVelocity")
+        bv.Velocity = Vector3.new(5000, 5000, 5000)
+        bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+        bv.P = 5000
+        bv.Parent = targetHRP
         game.Debris:AddItem(bv, 0.2)
         notify("Flinged " .. target.Name)
     end
 end
 
-local spamLoop
+local spamLoop = false
 commands.spam = function(args)
     local target = getPlayer(args[1])
     if not target then return end
     spamLoop = true
+    notify("Spamming " .. target.Name)
     task.spawn(function()
         while spamLoop and target and target.Parent do
             game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("You suck "..target.Name, "All")
             task.wait(0.3)
         end
     end)
-    notify("Spamming " .. target.Name)
 end
 
 commands.unspam = function()
@@ -142,7 +157,7 @@ commands.orbit = function(args)
     local orbiting = true
     notify("Orbiting " .. target.Name)
     task.spawn(function()
-        while orbiting and center.Parent and myHRP.Parent do
+        while orbiting and center.Parent and myHRP.Parent and plr.Character do
             angle = angle + 0.05
             local x = math.cos(angle) * dist
             local z = math.sin(angle) * dist
