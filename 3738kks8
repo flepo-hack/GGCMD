@@ -18,15 +18,20 @@ local bv = Instance.new("BodyVelocity")
 
     flyConn = RunService.RenderStepped:Connect(function()
         if not flying then return end
+        local moveVector = UIS:GetGamepadState(Enum.UserInputType.Touch)[1] and UIS:GetGamepadState(Enum.UserInputType.Touch)[1].Position or Vector3.new(0, 0, 0)
         local dir = Vector3.zero
-        if UIS:IsKeyDown(Enum.KeyCode.W) then dir += Camera.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= Camera.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= Camera.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then dir += Camera.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.new(0,1,0) end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir -= Vector3.new(0,1,0) end
+
+        if moveVector.Magnitude > 0 then
+            local camCF = Camera.CFrame
+            dir = (camCF.RightVector * moveVector.X + camCF.LookVector * -moveVector.Y)
+        end
+
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir -= Vector3.new(0, 1, 0) end
+
         bv.Velocity = dir.Magnitude > 0 and dir.Unit * 70 or Vector3.zero
     end)
+
 elseif not state and flying then
     flying = false
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
