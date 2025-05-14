@@ -1,6 +1,6 @@
 -- GGCMD v2 (Delta Executor -yhteensopiva, täysin mobiili-FE) -- Komennot: ;fly, ;unfly, ;kick, ;fling, ;spam, ;unspam, ;cmds
 
-local Players = game:GetService("Players") local RunService = game:GetService("RunService") local UIS = game:GetService("UserInputService") local LocalPlayer = Players.LocalPlayer local Camera = workspace.CurrentCamera local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players") local RunService = game:GetService("RunService") local UIS = game:GetService("UserInputService") local LocalPlayer = Players.LocalPlayer local Camera = workspace.CurrentCamera local HttpService = game:GetService("HttpService") local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 if _G.GGCMD_CONNECTED then return end _G.GGCMD_CONNECTED = true
 
@@ -8,11 +8,11 @@ local flying = false local flyConn local spamConn local spamWord = nil local fli
 
 local function getPlayer(name) if not name or name == "me" then return LocalPlayer end for _, p in ipairs(Players:GetPlayers()) do if p.Name:lower():sub(1, #name) == name:lower() then return p end end end
 
-local function toggleFly(state) if state and not flying then flying = true local char = LocalPlayer.Character local hrp = char and char:FindFirstChild("HumanoidRootPart") if not hrp then return end
+local function toggleFly(state) if state and not flying then flying = true local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() local hrp = char:WaitForChild("HumanoidRootPart")
 
 local bv = Instance.new("BodyVelocity")
     bv.Name = "GGCMD_Fly"
-    bv.MaxForce = Vector3.new(1,1,1) * 1e9
+    bv.MaxForce = Vector3.new(1, 1, 1) * 1e9
     bv.Velocity = Vector3.zero
     bv.Parent = hrp
 
@@ -25,11 +25,7 @@ local bv = Instance.new("BodyVelocity")
         if UIS:IsKeyDown(Enum.KeyCode.D) then dir += Camera.CFrame.RightVector end
         if UIS:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.new(0,1,0) end
         if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir -= Vector3.new(0,1,0) end
-        if dir.Magnitude > 0 then
-            bv.Velocity = dir.Unit * 70
-        else
-            bv.Velocity = Vector3.zero
-        end
+        bv.Velocity = dir.Magnitude > 0 and dir.Unit * 70 or Vector3.zero
     end)
 elseif not state and flying then
     flying = false
@@ -40,28 +36,28 @@ end
 
 end
 
-local function kickPlayer(name) local target = getPlayer(name) if not target then return end if target.Character then target.Character:Destroy() end if workspace:FindFirstChild(target.Name) then workspace[target.Name]:Destroy() end if Players:FindFirstChild(target.Name) then Players[target.Name]:Kick("Kicked by GGCMD") end end
+local function kickPlayer(name) local target = getPlayer(name) if not target then return end if target.Character then target.Character:Destroy() end if workspace:FindFirstChild(target.Name) then workspace[target.Name]:Destroy() end if Players:FindFirstChild(target.Name) then pcall(function() Players[target.Name]:Destroy() end) end end
 
 local function flingPlayer(name) local target = getPlayer(name) local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") local theirHRP = target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") if not target or not myHRP or not theirHRP then return end
 
 local oldPos = myHRP.Position
 flingConn = RunService.Stepped:Connect(function()
     pcall(function()
-        myHRP.CFrame = theirHRP.CFrame * CFrame.Angles(0,math.rad(500),0)
+        myHRP.CFrame = theirHRP.CFrame * CFrame.Angles(0, math.rad(500), 0)
     end)
 end)
 task.delay(2, function()
     if flingConn then flingConn:Disconnect() end
-    myHRP.CFrame = CFrame.new(oldPos + Vector3.new(0,10,0))
+    myHRP.CFrame = CFrame.new(oldPos + Vector3.new(0, 10, 0))
 end)
 
 end
 
-local function startSpam(word) spamWord = word spamConn = RunService.RenderStepped:Connect(function() game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(spamWord, "All") end) end
+local function startSpam(word) if spamConn then spamConn:Disconnect() end spamWord = word spamConn = RunService.RenderStepped:Connect(function() ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(spamWord, "All") end) end
 
 local function stopSpam() if spamConn then spamConn:Disconnect() end spamConn = nil spamWord = nil end
 
--- Anti-kick (Client-side) LocalPlayer.Kick = function() return nil end hookmetamethod(game, "__namecall", function(self, ...) local args = {...} if getnamecallmethod() == "Kick" and tostring(self) == tostring(LocalPlayer) then return nil end return getrawmetatable(game).__namecall(self, ...) end)
+-- Anti-kick (Client-side) LocalPlayer.Kick = function() return nil end local mt = getrawmetatable(game) setreadonly(mt, false) local oldNamecall = mt.__namecall mt.__namecall = newcclosure(function(self, ...) local args = {...} if getnamecallmethod() == "Kick" and tostring(self) == tostring(LocalPlayer) then return nil end return oldNamecall(self, ...) end)
 
 LocalPlayer.Chatted:Connect(function(msg) local args = msg:split(" ") local cmd = args[1]:lower() local arg = args[2]
 
@@ -78,7 +74,7 @@ elseif cmd == ";spam" and arg then
 elseif cmd == ";unspam" then
     stopSpam()
 elseif cmd == ";cmds" then
-    print("Komennot: ;fly, ;unfly, ;kick [nimi], ;fling [nimi], ;spam [teksti], ;unspam, ;cmds")
+    ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Komennot: ;fly, ;unfly, ;kick [nimi], ;fling [nimi], ;spam [teksti], ;unspam, ;cmds", "All")
 end
 
 end)
