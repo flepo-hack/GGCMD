@@ -26,12 +26,13 @@ local function getPlayer(name)
 			return p
 		end
 	end
+	return nil
 end
 
 local commands = {}
 local flyConn, spamConn, orbitConn
 
--- FLY: toimii joystickillä ja näppäimillä, kameraa seuraa
+-- FLY
 commands.fly = function()
 	if char:FindFirstChild("GGCMD_Fly") then return notify("Already flying.") end
 	local hrp = char:WaitForChild("HumanoidRootPart")
@@ -56,7 +57,7 @@ commands.fly = function()
 
 	flyConn = RS.Heartbeat:Connect(function()
 		if not char or not char:FindFirstChild("GGCMD_Fly") then
-			if flyConn then flyConn:Disconnect() end
+			if flyConn then flyConn:Disconnect() flyConn = nil end
 			bv:Destroy()
 			bg:Destroy()
 			return
@@ -65,7 +66,6 @@ commands.fly = function()
 		local cam = workspace.CurrentCamera
 		local moveDir = Vector3.zero
 
-		-- Keyboard input
 		if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += cam.CFrame.LookVector end
 		if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= cam.CFrame.LookVector end
 		if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= cam.CFrame.RightVector end
@@ -73,13 +73,11 @@ commands.fly = function()
 		if UIS:IsKeyDown(Enum.KeyCode.E) then moveDir += Vector3.new(0,1,0) end
 		if UIS:IsKeyDown(Enum.KeyCode.Q) then moveDir -= Vector3.new(0,1,0) end
 
-		-- Gamepad joystick input
 		for _, gp in pairs(UIS:GetGamepads()) do
 			local states = UIS:GetGamepadState(gp)
 			for _, state in pairs(states) do
 				if state.UserInputType == Enum.UserInputType.Gamepad1 then
 					local pos = state.Position
-					-- Left joystick: Y is forward/back (invert), X is left/right
 					moveDir += cam.CFrame.RightVector * pos.X
 					moveDir += cam.CFrame.LookVector * -pos.Y
 				end
@@ -199,7 +197,7 @@ commands.orbit = function(args)
 	notify("Orbiting "..target.Name)
 	local angle = 0
 	orbitConn = RS.RenderStepped:Connect(function()
-		if not targetRoot or not targetRoot.Parent then orbitConn:Disconnect() return end
+		if not targetRoot or not targetRoot.Parent then orbitConn:Disconnect() orbitConn = nil return end
 		angle += 0.2
 		local radius = 5
 		local offset = Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius)
@@ -227,14 +225,14 @@ plr.Chatted:Connect(function(msg)
 	end
 end)
 
--- GUI: pyöreä, korkea, draggable, klikkaa laajenee komentokentäksi
+-- GUI: ympyrä-nappi keskellä ylhäällä ja pieni komentobari laajenee klikatessa
 
 local gui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
 gui.Name = "GGCMD_CmdBar"
 
 local circle = Instance.new("TextButton", gui)
 circle.Size = UDim2.new(0, 60, 0, 60)
-circle.Position = UDim2.new(0.5, -30, 0.07, 0) -- korkeammalla
+circle.Position = UDim2.new(0.5, -30, 0.05, 0) -- keskellä leveys ja lähellä yläreunaa
 circle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 circle.Text = "GGCMD"
 circle.TextColor3 = Color3.new(1,1,1)
@@ -245,32 +243,22 @@ circle.ClipsDescendants = true
 circle.BorderSizePixel = 0
 circle.ZIndex = 2
 circle.Name = "GGCMD_Activator"
-circle.AnchorPoint = Vector2.new(0.5, 0)
+circle.AnchorPoint = Vector2.new(0.5, 0.5)
 circle.TextStrokeTransparency = 0.5
 circle.TextWrapped = true
 circle.TextYAlignment = Enum.TextYAlignment.Center
 circle.TextXAlignment = Enum.TextXAlignment.Center
 circle.TextTransparency = 0
-
-circle.Text = ""
 circle.BackgroundTransparency = 0
+circle.Shape = Enum.PartType.Ball -- Tämä ei toimi TextButtonissa, käytetään pyöristystä sijaan
 
--- Pyöreä muoto
-circle:GetPropertyChangedSignal("Size"):Connect(function()
-	circle.BackgroundTransparency = 0
-	circle.TextTransparency = 0
-	circle.Text = "GGCMD"
-	circle.TextScaled = true
-	circle.TextWrapped = true
-end)
-circle.ClipsDescendants = true
-circle.BackgroundTransparency = 0
-circle.Text = "GGCMD"
-circle.Font = Enum.Font.SourceSansBold
+-- Pyöristetyt kulmat (pyöreä nappi)  
+local corner = Instance.new("UICorner", circle)
+corner.CornerRadius = UDim.new(1,0) -- tekee täysin pyöreän
 
 local box = Instance.new("TextBox", gui)
 box.Size = UDim2.new(0, 0, 0, 0)
-box.Position = UDim2.new(0.5, -150, 0.07, 0)
+box.Position = UDim2.new(0.5, -150, 0.05, 0)
 box.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 box.TextColor3 = Color3.new(1, 1, 1)
 box.PlaceholderText = "command here"
@@ -279,11 +267,11 @@ box.TextScaled = true
 box.ClearTextOnFocus = true
 box.Visible = false
 box.ZIndex = 3
-box.AnchorPoint = Vector2.new(0.5, 0)
+box.AnchorPoint = Vector2.new(0.5, 0.5)
 
 local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
--- Draggable
+-- Draggable nappi (circle) ja box liikkuu mukana
 local dragging = false
 local dragInput, dragStart, startPos
 
@@ -292,7 +280,7 @@ local function update(input)
 	local newPosX = math.clamp(startPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - circle.AbsoluteSize.X)
 	local newPosY = math.clamp(startPos.Y.Offset + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - circle.AbsoluteSize.Y)
 	circle.Position = UDim2.new(0, newPosX, 0, newPosY)
-	box.Position = UDim2.new(0, newPosX - 120, 0, newPosY)
+	box.Position = UDim2.new(0, newPosX - 150, 0, newPosY)
 end
 
 circle.InputBegan:Connect(function(input)
@@ -320,11 +308,11 @@ UIS.InputChanged:Connect(function(input)
 	end
 end)
 
--- Laajenna klikattaessa
+-- Laajenna komentobari klikattaessa
 circle.MouseButton1Click:Connect(function()
 	box.Visible = true
 	box:CaptureFocus()
-	TS:Create(circle, tweenInfo, {Size = UDim2.new(0, 0, 0, 0)}):Play()
+	TS:Create(circle, tweenInfo, {Size = UDim2.new(0, 40, 0, 40)}):Play()
 	TS:Create(box, tweenInfo, {Size = UDim2.new(0, 300, 0, 40)}):Play()
 end)
 
@@ -349,4 +337,4 @@ box.FocusLost:Connect(function(enter)
 	end)
 end)
 
-notify("GGCMD v2 loaded! thx for using")
+notify("GGCMD v2 loaded! Thanks for using GGCMD")
