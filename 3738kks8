@@ -1,224 +1,237 @@
--- GGCMD v2 täysi versio (FE-yhteensopiva)
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+--[[
+  GGCMD v2 - Täysi versio, QuirckyCMD-tyylinen
+  Tekijä: GGCMD-tiimi
+  Discord: discord.gg/ggcmd
+  Kaikki komennot käytettävissä ilman puolipistettä
+]]
 
-local Admins = {LocalPlayer.Name}
-local Owners = {LocalPlayer.Name}
-local ActiveSpam = false
-local Orbiting = false
-local BangActive = false
+local players = game:GetService("Players")
+local lp = players.LocalPlayer
+local mouse = lp:GetMouse()
+local uis = game:GetService("UserInputService")
+local admins = {lp.Name}
+local owners = {lp.Name}
+local prefix = ""
+local cmds = {}
+local gui, input
 
--- CommandBar
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-local CmdBar = Instance.new("TextBox", ScreenGui)
-CmdBar.Position = UDim2.new(0.3, 0, 0.05, 0)
-CmdBar.Size = UDim2.new(0.4, 0, 0.05, 0)
-CmdBar.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
-CmdBar.TextColor3 = Color3.new(1, 1, 1)
-CmdBar.TextSize = 18
-CmdBar.PlaceholderText = "Enter command..."
-CmdBar.ClearTextOnFocus = false
-CmdBar.Draggable = true
-CmdBar.Active = true
-CmdBar.Selectable = true
-
--- Utilities
-local function getPlayer(name)
-	for _, player in pairs(Players:GetPlayers()) do
-		if player.Name:lower():sub(1, #name) == name:lower() then
-			return player
-		end
+-- Utility
+local function isAdmin(name)
+	for _, admin in pairs(admins) do
+		if admin:lower() == name:lower() then return true end
 	end
+	for _, owner in pairs(owners) do
+		if owner:lower() == name:lower() then return true end
+	end
+	return false
 end
 
--- Commands
-local Commands = {}
-
-Commands.fly = function()
-	local flying = true
-	local BodyGyro = Instance.new("BodyGyro", LocalPlayer.Character.HumanoidRootPart)
-	local BodyVelocity = Instance.new("BodyVelocity", LocalPlayer.Character.HumanoidRootPart)
-	BodyGyro.P = 9e4
-	BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-	BodyGyro.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
-	BodyVelocity.Velocity = Vector3.new(0, 0, 0)
-	BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-
-	local speed = 50
-	local control = {f = 0, b = 0, l = 0, r = 0}
-
-	UserInputService.InputBegan:Connect(function(input)
-		if input.KeyCode == Enum.KeyCode.W then control.f = 1 end
-		if input.KeyCode == Enum.KeyCode.S then control.b = -1 end
-		if input.KeyCode == Enum.KeyCode.A then control.l = -1 end
-		if input.KeyCode == Enum.KeyCode.D then control.r = 1 end
-	end)
-
-	UserInputService.InputEnded:Connect(function(input)
-		if input.KeyCode == Enum.KeyCode.W then control.f = 0 end
-		if input.KeyCode == Enum.KeyCode.S then control.b = 0 end
-		if input.KeyCode == Enum.KeyCode.A then control.l = 0 end
-		if input.KeyCode == Enum.KeyCode.D then control.r = 0 end
-	end)
-
-	while flying do
-		RunService.RenderStepped:Wait()
-		BodyGyro.CFrame = workspace.CurrentCamera.CFrame
-		BodyVelocity.Velocity = ((workspace.CurrentCamera.CFrame.lookVector * (control.f + control.b)) +
-			(workspace.CurrentCamera.CFrame.RightVector * (control.r + control.l))) * speed
-	end
+local function notify(text)
+	game.StarterGui:SetCore("SendNotification", {
+		Title = "GGCMD";
+		Text = text;
+		Duration = 5;
+	})
 end
 
-Commands.unfly = function()
-	local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-	if hrp then
-		for _, obj in ipairs(hrp:GetChildren()) do
-			if obj:IsA("BodyGyro") or obj:IsA("BodyVelocity") then
-				obj:Destroy()
+-- GUI
+local function createCmdBar()
+	gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+	gui.Name = "GGCMD_GUI"
+
+	local frame = Instance.new("Frame", gui)
+	frame.Name = "CmdBar"
+	frame.Size = UDim2.new(0.5, 0, 0, 40)
+	frame.Position = UDim2.new(0.25, 0, 0.85, 0)
+	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	frame.BorderSizePixel = 0
+	frame.BackgroundTransparency = 0.2
+	frame.Active = true
+	frame.Draggable = true
+
+	local textBox = Instance.new("TextBox", frame)
+	textBox.Size = UDim2.new(1, 0, 1, 0)
+	textBox.Text = ""
+	textBox.PlaceholderText = "Kirjoita komento..."
+	textBox.TextColor3 = Color3.fromRGB(255,255,255)
+	textBox.BackgroundTransparency = 1
+	textBox.ClearTextOnFocus = false
+	textBox.TextScaled = true
+	textBox.Font = Enum.Font.SourceSans
+	textBox.TextXAlignment = Enum.TextXAlignment.Left
+	input = textBox
+
+	textBox.FocusLost:Connect(function(enter)
+		if enter and isAdmin(lp.Name) then
+			local txt = textBox.Text
+			textBox.Text = ""
+			local args = txt:split(" ")
+			local cmd = args[1]:lower()
+			table.remove(args, 1)
+			if cmds[cmd] then
+				cmds[cmd](unpack(args))
+			else
+				notify("Tuntematon komento: "..cmd)
 			end
 		end
-	end
+	end)
 end
 
-Commands.flyspeed = function(arg)
-	-- already handled in fly
+-- Komennot
+cmds["fly"] = function()
+	loadstring(game:HttpGet("https://pastebin.com/raw/sxg4k3D2"))()
 end
 
-Commands.kill = function(name)
-	local target = getPlayer(name)
+cmds["unfly"] = function()
+	if _G.Flying then _G.Flying = false end
+end
+
+cmds["flyspeed"] = function(s)
+	_G.FLYSPEED = tonumber(s) or 2
+end
+
+cmds["kill"] = function(name)
+	local target = players:FindFirstChild(name)
 	if target and target.Character then
 		target.Character:BreakJoints()
 	end
 end
 
-Commands.tp = function(name)
-	local target = getPlayer(name)
-	if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-		LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position)
+cmds["tp"] = function(name)
+	local target = players:FindFirstChild(name)
+	if target and target.Character and lp.Character then
+		lp.Character:PivotTo(target.Character:GetPivot())
 	end
 end
 
-Commands.teleport = Commands.tp
+cmds["teleport"] = cmds["tp"]
 
-Commands.bring = function(name)
-	local target = getPlayer(name)
-	if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-		target.Character:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position)
-	end
-end
-
-Commands.kick = function(name)
-	local target = getPlayer(name)
+cmds["kick"] = function(name)
+	local target = players:FindFirstChild(name)
 	if target then
-		target:Kick("Kicked by GGCMD")
+		target:Destroy()
 	end
 end
 
-Commands.fling = function(name)
-	local target = getPlayer(name)
-	if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-		local bv = Instance.new("BodyVelocity", target.Character.HumanoidRootPart)
-		bv.Velocity = Vector3.new(0, 999, 0)
-		bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-		game.Debris:AddItem(bv, 1)
-	end
-end
-
-Commands.torsofling = function(name)
-	Commands.fling(name)
-end
-
-Commands.spam = function()
-	ActiveSpam = true
-	while ActiveSpam do
-		wait(0.1)
-		game.ReplicatedStorage:FireServer("Spamming...", math.random())
-	end
-end
-
-Commands.unspam = function()
-	ActiveSpam = false
-end
-
-Commands.orbit = function(name)
-	local target = getPlayer(name)
-	if not target then return end
-	Orbiting = true
-	local angle = 0
-	while Orbiting and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") do
-		angle += 0.1
-		local radius = 10
-		local x = math.cos(angle) * radius
-		local z = math.sin(angle) * radius
-		LocalPlayer.Character:SetPrimaryPartCFrame(
-			CFrame.new(target.Character.HumanoidRootPart.Position + Vector3.new(x, 3, z))
-		)
-		RunService.RenderStepped:Wait()
-	end
-end
-
-Commands.unorbit = function()
-	Orbiting = false
-end
-
-Commands.bang = function(name)
-	local target = getPlayer(name)
-	if target and target.Character then
-		BangActive = true
-		while BangActive do
-			LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position)
-			wait()
+cmds["fling"] = function(name)
+	local target = players:FindFirstChild(name)
+	if target and target.Character and lp.Character then
+		local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
+		local thrp = target.Character:FindFirstChild("HumanoidRootPart")
+		if hrp and thrp then
+			hrp.CFrame = thrp.CFrame
+			wait(0.1)
+			local v = Instance.new("BodyVelocity", hrp)
+			v.Velocity = Vector3.new(9999,9999,9999)
+			v.MaxForce = Vector3.new(math.huge,math.huge,math.huge)
+			game.Debris:AddItem(v, 0.1)
 		end
 	end
 end
 
-Commands.unbang = function()
-	BangActive = false
-end
-
-Commands.nuke = function()
-	for _, plr in pairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer then
-			Commands.kill(plr.Name)
+cmds["bring"] = function(name)
+	local target = players:FindFirstChild(name)
+	if target and target.Character and lp.Character then
+		local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
+		local thrp = target.Character:FindFirstChild("HumanoidRootPart")
+		if hrp and thrp then
+			thrp.CFrame = hrp.CFrame + Vector3.new(2,0,0)
 		end
 	end
 end
 
-Commands.wither = Commands.nuke
-
-Commands.witherws = Commands.nuke
-
-Commands.gun = function()
-	local tool = Instance.new("Tool", LocalPlayer.Backpack)
-	tool.Name = "Gun"
-	local handle = Instance.new("Part", tool)
-	handle.Name = "Handle"
-	handle.Size = Vector3.new(1,1,1)
-	handle.Anchored = false
-	handle.CanCollide = false
-	tool.Activated:Connect(function()
-		local mouseTarget = Mouse.Target
-		if mouseTarget and mouseTarget.Parent:FindFirstChild("Humanoid") then
-			mouseTarget.Parent:FindFirstChild("Humanoid"):TakeDamage(50)
+cmds["spam"] = function(...)
+	local text = table.concat({...}, " ")
+	_G.Spamming = true
+	task.spawn(function()
+		while _G.Spamming do
+			game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
+			wait(0.5)
 		end
 	end)
 end
 
--- Command Parsing
-CmdBar.FocusLost:Connect(function(enter)
-	if enter then
-		local input = CmdBar.Text
-		CmdBar.Text = ""
-		local args = input:split(" ")
-		local cmd = args[1]:lower()
-		table.remove(args, 1)
-		if Commands[cmd] then
-			coroutine.wrap(function()
-				Commands[cmd](unpack(args))
-			end)()
+cmds["unspam"] = function()
+	_G.Spamming = false
+end
+
+cmds["orbit"] = function(name)
+	local target = players:FindFirstChild(name)
+	if target and target.Character then
+		_G.Orbiting = true
+		task.spawn(function()
+			while _G.Orbiting do
+				local angle = tick() * 5
+				local pos = target.Character:GetPivot().Position
+				local newPos = pos + Vector3.new(math.cos(angle)*5, 2, math.sin(angle)*5)
+				if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+					lp.Character:PivotTo(CFrame.new(newPos, pos))
+				end
+				wait()
+			end
+		end)
+	end
+end
+
+cmds["unorbit"] = function()
+	_G.Orbiting = false
+end
+
+cmds["bang"] = function(name)
+	local target = players:FindFirstChild(name)
+	if target and target.Character and lp.Character then
+		local tool = Instance.new("Tool")
+		tool.RequiresHandle = false
+		tool.Name = "Bang"
+		tool.Parent = lp.Backpack
+		local anim = Instance.new("Animation")
+		anim.AnimationId = "rbxassetid://148840371"
+		anim.Parent = tool
+		tool.Activated:Connect(function()
+			local h = lp.Character:FindFirstChildOfClass("Humanoid")
+			if h then h:LoadAnimation(anim):Play() end
+			wait()
+			target.Character:BreakJoints()
+		end)
+	end
+end
+
+cmds["unbang"] = function()
+	for _, tool in pairs(lp.Backpack:GetChildren()) do
+		if tool.Name == "Bang" then
+			tool:Destroy()
 		end
 	end
-end)
+end
+
+cmds["nuke"] = function()
+	for _, p in pairs(players:GetPlayers()) do
+		if p ~= lp then
+			p:Kick("Nuked by "..lp.Name)
+		end
+	end
+end
+
+cmds["wither"] = function(name)
+	local target = players:FindFirstChild(name)
+	if target and target.Character then
+		for _, part in pairs(target.Character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.Anchored = false
+				part.Velocity = Vector3.new(math.random(-100,100),math.random(100,200),math.random(-100,100))
+			end
+		end
+	end
+end
+
+cmds["witherws"] = function(name)
+	local target = players:FindFirstChild(name)
+	if target and target.Character then
+		target.Character:BreakJoints()
+	end
+end
+
+-- Aloitus
+createCmdBar()
+notify("GGCMD v2 loaded succesfully!")
+notify("thx for using GGCMD ")
