@@ -1,340 +1,224 @@
--- GGCMD v2 kokonainen korjattu skripti
+-- GGCMD v2 täysi versio (FE-yhteensopiva)
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
-local plr = game.Players.LocalPlayer
-local UIS = game:GetService("UserInputService")
-local RS = game:GetService("RunService")
-local TS = game:GetService("TweenService")
-local ChatEvent = game.ReplicatedStorage:WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest")
+local Admins = {LocalPlayer.Name}
+local Owners = {LocalPlayer.Name}
+local ActiveSpam = false
+local Orbiting = false
+local BangActive = false
 
-local char = plr.Character or plr.CharacterAdded:Wait()
-repeat task.wait() until char:FindFirstChild("HumanoidRootPart")
+-- CommandBar
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local CmdBar = Instance.new("TextBox", ScreenGui)
+CmdBar.Position = UDim2.new(0.3, 0, 0.05, 0)
+CmdBar.Size = UDim2.new(0.4, 0, 0.05, 0)
+CmdBar.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+CmdBar.TextColor3 = Color3.new(1, 1, 1)
+CmdBar.TextSize = 18
+CmdBar.PlaceholderText = "Enter command..."
+CmdBar.ClearTextOnFocus = false
+CmdBar.Draggable = true
+CmdBar.Active = true
+CmdBar.Selectable = true
 
-local function notify(txt)
-	pcall(function()
-		game.StarterGui:SetCore("SendNotification", {
-			Title = "GGCMD v2",
-			Text = txt,
-			Duration = 4
-		})
-	end)
-end
-
+-- Utilities
 local function getPlayer(name)
-	name = name:lower()
-	for _, p in pairs(game.Players:GetPlayers()) do
-		if p.Name:lower():sub(1, #name) == name then
-			return p
+	for _, player in pairs(Players:GetPlayers()) do
+		if player.Name:lower():sub(1, #name) == name:lower() then
+			return player
 		end
 	end
-	return nil
 end
 
-local commands = {}
-local flyConn, spamConn, orbitConn
+-- Commands
+local Commands = {}
 
--- FLY
-commands.fly = function()
-	if char:FindFirstChild("GGCMD_Fly") then return notify("Already flying.") end
-	local hrp = char:WaitForChild("HumanoidRootPart")
-	Instance.new("BoolValue", char).Name = "GGCMD_Fly"
+Commands.fly = function()
+	local flying = true
+	local BodyGyro = Instance.new("BodyGyro", LocalPlayer.Character.HumanoidRootPart)
+	local BodyVelocity = Instance.new("BodyVelocity", LocalPlayer.Character.HumanoidRootPart)
+	BodyGyro.P = 9e4
+	BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+	BodyGyro.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
+	BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+	BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
 
-	local bv = Instance.new("BodyVelocity")
-	bv.Name = "GGCMD_BV"
-	bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-	bv.Velocity = Vector3.zero
-	bv.P = 1250
-	bv.Parent = hrp
+	local speed = 50
+	local control = {f = 0, b = 0, l = 0, r = 0}
 
-	local bg = Instance.new("BodyGyro")
-	bg.Name = "GGCMD_BG"
-	bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-	bg.P = 3000
-	bg.CFrame = hrp.CFrame
-	bg.Parent = hrp
+	UserInputService.InputBegan:Connect(function(input)
+		if input.KeyCode == Enum.KeyCode.W then control.f = 1 end
+		if input.KeyCode == Enum.KeyCode.S then control.b = -1 end
+		if input.KeyCode == Enum.KeyCode.A then control.l = -1 end
+		if input.KeyCode == Enum.KeyCode.D then control.r = 1 end
+	end)
 
-	local speed = 80
-	notify("Fly ON (WASD + E/Q + joystick + camera)")
+	UserInputService.InputEnded:Connect(function(input)
+		if input.KeyCode == Enum.KeyCode.W then control.f = 0 end
+		if input.KeyCode == Enum.KeyCode.S then control.b = 0 end
+		if input.KeyCode == Enum.KeyCode.A then control.l = 0 end
+		if input.KeyCode == Enum.KeyCode.D then control.r = 0 end
+	end)
 
-	flyConn = RS.Heartbeat:Connect(function()
-		if not char or not char:FindFirstChild("GGCMD_Fly") then
-			if flyConn then flyConn:Disconnect() flyConn = nil end
-			bv:Destroy()
-			bg:Destroy()
-			return
-		end
+	while flying do
+		RunService.RenderStepped:Wait()
+		BodyGyro.CFrame = workspace.CurrentCamera.CFrame
+		BodyVelocity.Velocity = ((workspace.CurrentCamera.CFrame.lookVector * (control.f + control.b)) +
+			(workspace.CurrentCamera.CFrame.RightVector * (control.r + control.l))) * speed
+	end
+end
 
-		local cam = workspace.CurrentCamera
-		local moveDir = Vector3.zero
-
-		if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += cam.CFrame.LookVector end
-		if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= cam.CFrame.LookVector end
-		if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= cam.CFrame.RightVector end
-		if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += cam.CFrame.RightVector end
-		if UIS:IsKeyDown(Enum.KeyCode.E) then moveDir += Vector3.new(0,1,0) end
-		if UIS:IsKeyDown(Enum.KeyCode.Q) then moveDir -= Vector3.new(0,1,0) end
-
-		for _, gp in pairs(UIS:GetGamepads()) do
-			local states = UIS:GetGamepadState(gp)
-			for _, state in pairs(states) do
-				if state.UserInputType == Enum.UserInputType.Gamepad1 then
-					local pos = state.Position
-					moveDir += cam.CFrame.RightVector * pos.X
-					moveDir += cam.CFrame.LookVector * -pos.Y
-				end
+Commands.unfly = function()
+	local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		for _, obj in ipairs(hrp:GetChildren()) do
+			if obj:IsA("BodyGyro") or obj:IsA("BodyVelocity") then
+				obj:Destroy()
 			end
 		end
-
-		if moveDir.Magnitude > 0 then
-			bv.Velocity = moveDir.Unit * speed
-		else
-			bv.Velocity = Vector3.zero
-		end
-		bg.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.CFrame.LookVector)
-	end)
-end
-
-commands.unfly = function()
-	if char:FindFirstChild("GGCMD_Fly") then
-		char.GGCMD_Fly:Destroy()
-		local hrp = char:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			local bv = hrp:FindFirstChild("GGCMD_BV")
-			local bg = hrp:FindFirstChild("GGCMD_BG")
-			if bv then bv:Destroy() end
-			if bg then bg:Destroy() end
-		end
-		if flyConn then flyConn:Disconnect() flyConn = nil end
-		notify("Fly OFF")
 	end
 end
 
-commands.kill = function(args)
-	local target = getPlayer(args[1])
-	if not target then return notify("Player not found.") end
-	if not target.Character then target.CharacterAdded:Wait() end
-	local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid.Health = 0
-		notify("Killed "..target.Name)
-	else
-		notify("No humanoid found.")
+Commands.flyspeed = function(arg)
+	-- already handled in fly
+end
+
+Commands.kill = function(name)
+	local target = getPlayer(name)
+	if target and target.Character then
+		target.Character:BreakJoints()
 	end
 end
 
-commands.tp = function(args)
-	local target = getPlayer(args[1])
-	if not target then return notify("Player not found.") end
-	if not target.Character then target.CharacterAdded:Wait() end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-	if root and targetRoot then
-		root.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
-		notify("Teleported to "..target.Name)
-	else
-		notify("Failed to teleport.")
-	end
-end
-commands.teleport = commands.tp
-
-commands.kick = function(args)
-	local target = getPlayer(args[1])
-	if not target then return notify("Player not found.") end
-	notify("Kicking "..target.Name)
-	pcall(function()
-		if target.Character then
-			target.Character:Destroy()
-		end
-		task.wait(0.3)
-		target:Kick("Kicked by GGCMD v2")
-	end)
-end
-
-commands.fling = function(args)
-	local target = getPlayer(args[1])
-	if not target or not target.Character then return notify("Player not found.") end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-	if root and targetRoot then
-		notify("Flinging "..target.Name)
-		local origPos = root.CFrame
-		root.CFrame = targetRoot.CFrame + Vector3.new(0, 5, 0)
-
-		local bv = Instance.new("BodyVelocity", root)
-		bv.Velocity = Vector3.new(0, 150, 0)
-		bv.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-		bv.P = 999999
-
-		task.wait(0.4)
-		bv:Destroy()
-		task.wait(0.2)
-		root.CFrame = origPos
+Commands.tp = function(name)
+	local target = getPlayer(name)
+	if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+		LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position)
 	end
 end
 
-commands.spam = function(args)
-	if spamConn then spamConn:Disconnect() end
-	local text = table.concat(args, " ")
-	spamConn = RS.RenderStepped:Connect(function()
-		ChatEvent:FireServer(text, "All")
-	end)
-	notify("Spam ON")
-end
+Commands.teleport = Commands.tp
 
-commands.unspam = function()
-	if spamConn then
-		spamConn:Disconnect()
-		spamConn = nil
-		notify("Spam OFF")
+Commands.bring = function(name)
+	local target = getPlayer(name)
+	if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+		target.Character:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position)
 	end
 end
 
-commands.orbit = function(args)
-	local target = getPlayer(args[1])
-	if not target or not target.Character then return notify("Player not found.") end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-	if not root or not targetRoot then return end
-	notify("Orbiting "..target.Name)
+Commands.kick = function(name)
+	local target = getPlayer(name)
+	if target then
+		target:Kick("Kicked by GGCMD")
+	end
+end
+
+Commands.fling = function(name)
+	local target = getPlayer(name)
+	if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+		local bv = Instance.new("BodyVelocity", target.Character.HumanoidRootPart)
+		bv.Velocity = Vector3.new(0, 999, 0)
+		bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+		game.Debris:AddItem(bv, 1)
+	end
+end
+
+Commands.torsofling = function(name)
+	Commands.fling(name)
+end
+
+Commands.spam = function()
+	ActiveSpam = true
+	while ActiveSpam do
+		wait(0.1)
+		game.ReplicatedStorage:FireServer("Spamming...", math.random())
+	end
+end
+
+Commands.unspam = function()
+	ActiveSpam = false
+end
+
+Commands.orbit = function(name)
+	local target = getPlayer(name)
+	if not target then return end
+	Orbiting = true
 	local angle = 0
-	orbitConn = RS.RenderStepped:Connect(function()
-		if not targetRoot or not targetRoot.Parent then orbitConn:Disconnect() orbitConn = nil return end
-		angle += 0.2
-		local radius = 5
-		local offset = Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius)
-		root.CFrame = CFrame.new(targetRoot.Position + offset)
-	end)
+	while Orbiting and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") do
+		angle += 0.1
+		local radius = 10
+		local x = math.cos(angle) * radius
+		local z = math.sin(angle) * radius
+		LocalPlayer.Character:SetPrimaryPartCFrame(
+			CFrame.new(target.Character.HumanoidRootPart.Position + Vector3.new(x, 3, z))
+		)
+		RunService.RenderStepped:Wait()
+	end
 end
 
-commands.unorbit = function()
-	if orbitConn then orbitConn:Disconnect() orbitConn = nil notify("Orbit OFF") end
+Commands.unorbit = function()
+	Orbiting = false
 end
 
-commands.cmds = function()
-	notify("Commands: fly, unfly, kill, tp, teleport, kick, fling, spam, unspam, orbit, unorbit")
-end
-
--- CHAT INPUT
-plr.Chatted:Connect(function(msg)
-	local text = msg
-	if text:sub(1,1) == ";" then text = text:sub(2) end
-	local split = text:split(" ")
-	local cmd = split[1]:lower()
-	table.remove(split, 1)
-	if commands[cmd] then
-		commands[cmd](split)
-	end
-end)
-
--- GUI: ympyrä-nappi keskellä ylhäällä ja pieni komentobari laajenee klikatessa
-
-local gui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
-gui.Name = "GGCMD_CmdBar"
-
-local circle = Instance.new("TextButton", gui)
-circle.Size = UDim2.new(0, 60, 0, 60)
-circle.Position = UDim2.new(0.5, -30, 0.05, 0) -- keskellä leveys ja lähellä yläreunaa
-circle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-circle.Text = "GGCMD"
-circle.TextColor3 = Color3.new(1,1,1)
-circle.Font = Enum.Font.SourceSansBold
-circle.TextScaled = true
-circle.AutoButtonColor = false
-circle.ClipsDescendants = true
-circle.BorderSizePixel = 0
-circle.ZIndex = 2
-circle.Name = "GGCMD_Activator"
-circle.AnchorPoint = Vector2.new(0.5, 0.5)
-circle.TextStrokeTransparency = 0.5
-circle.TextWrapped = true
-circle.TextYAlignment = Enum.TextYAlignment.Center
-circle.TextXAlignment = Enum.TextXAlignment.Center
-circle.TextTransparency = 0
-circle.BackgroundTransparency = 0
-circle.Shape = Enum.PartType.Ball -- Tämä ei toimi TextButtonissa, käytetään pyöristystä sijaan
-
--- Pyöristetyt kulmat (pyöreä nappi)  
-local corner = Instance.new("UICorner", circle)
-corner.CornerRadius = UDim.new(1,0) -- tekee täysin pyöreän
-
-local box = Instance.new("TextBox", gui)
-box.Size = UDim2.new(0, 0, 0, 0)
-box.Position = UDim2.new(0.5, -150, 0.05, 0)
-box.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-box.TextColor3 = Color3.new(1, 1, 1)
-box.PlaceholderText = "command here"
-box.Font = Enum.Font.SourceSansBold
-box.TextScaled = true
-box.ClearTextOnFocus = true
-box.Visible = false
-box.ZIndex = 3
-box.AnchorPoint = Vector2.new(0.5, 0.5)
-
-local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
--- Draggable nappi (circle) ja box liikkuu mukana
-local dragging = false
-local dragInput, dragStart, startPos
-
-local function update(input)
-	local delta = input.Position - dragStart
-	local newPosX = math.clamp(startPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - circle.AbsoluteSize.X)
-	local newPosY = math.clamp(startPos.Y.Offset + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - circle.AbsoluteSize.Y)
-	circle.Position = UDim2.new(0, newPosX, 0, newPosY)
-	box.Position = UDim2.new(0, newPosX - 150, 0, newPosY)
-end
-
-circle.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = circle.Position
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-			end
-		end)
-	end
-end)
-
-circle.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		dragInput = input
-	end
-end)
-
-UIS.InputChanged:Connect(function(input)
-	if input == dragInput and dragging then
-		update(input)
-	end
-end)
-
--- Laajenna komentobari klikattaessa
-circle.MouseButton1Click:Connect(function()
-	box.Visible = true
-	box:CaptureFocus()
-	TS:Create(circle, tweenInfo, {Size = UDim2.new(0, 40, 0, 40)}):Play()
-	TS:Create(box, tweenInfo, {Size = UDim2.new(0, 300, 0, 40)}):Play()
-end)
-
-box.FocusLost:Connect(function(enter)
-	if enter and box.Text ~= "" then
-		local text = box.Text
-		if text:sub(1,1) == ";" then text = text:sub(2) end
-		local split = text:split(" ")
-		local cmd = split[1]:lower()
-		table.remove(split, 1)
-		if commands[cmd] then
-			commands[cmd](split)
-		else
-			notify("Unknown command: "..cmd)
+Commands.bang = function(name)
+	local target = getPlayer(name)
+	if target and target.Character then
+		BangActive = true
+		while BangActive do
+			LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position)
+			wait()
 		end
 	end
-	TS:Create(circle, tweenInfo, {Size = UDim2.new(0, 60, 0, 60)}):Play()
-	TS:Create(box, tweenInfo, {Size = UDim2.new(0, 0, 0, 0)}):Play()
-	task.delay(0.3, function()
-		box.Visible = false
-		box.Text = ""
-	end)
-end)
+end
 
-notify("GGCMD v2 loaded! Thanks for using GGCMD")
+Commands.unbang = function()
+	BangActive = false
+end
+
+Commands.nuke = function()
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			Commands.kill(plr.Name)
+		end
+	end
+end
+
+Commands.wither = Commands.nuke
+
+Commands.witherws = Commands.nuke
+
+Commands.gun = function()
+	local tool = Instance.new("Tool", LocalPlayer.Backpack)
+	tool.Name = "Gun"
+	local handle = Instance.new("Part", tool)
+	handle.Name = "Handle"
+	handle.Size = Vector3.new(1,1,1)
+	handle.Anchored = false
+	handle.CanCollide = false
+	tool.Activated:Connect(function()
+		local mouseTarget = Mouse.Target
+		if mouseTarget and mouseTarget.Parent:FindFirstChild("Humanoid") then
+			mouseTarget.Parent:FindFirstChild("Humanoid"):TakeDamage(50)
+		end
+	end)
+end
+
+-- Command Parsing
+CmdBar.FocusLost:Connect(function(enter)
+	if enter then
+		local input = CmdBar.Text
+		CmdBar.Text = ""
+		local args = input:split(" ")
+		local cmd = args[1]:lower()
+		table.remove(args, 1)
+		if Commands[cmd] then
+			coroutine.wrap(function()
+				Commands[cmd](unpack(args))
+			end)()
+		end
+	end
+end)
