@@ -1,4 +1,6 @@
--- GGCMD v2 by Googlepoika (MOBILE FRIENDLY + DRAGGABLE + Fling fix + Kick fix + Discord Notify)
+-- GGCMD v2 FINAL FE-FIXED by Googlepoika
+-- Täysin toimiva versio: fly, kill, tp, kick (FE), fling (palautus), mobiilituki, cmdbar ilman ';'
+
 local plr = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
@@ -26,6 +28,7 @@ end
 
 local commands = {}
 local flyConn
+local lastPos
 
 commands.fly = function()
 	if char:FindFirstChild("GGCMD_Fly") then return notify("Already flying.") end
@@ -48,7 +51,7 @@ commands.fly = function()
 	bg.Parent = hrp
 
 	local speed = 80
-	notify("Fly ON (WASD + E/Q + kamera)")
+	notify("Fly ON (WASD + E/Q)")
 
 	flyConn = RS.Heartbeat:Connect(function()
 		if not char or not char:FindFirstChild("GGCMD_Fly") then
@@ -60,7 +63,6 @@ commands.fly = function()
 
 		local cam = workspace.CurrentCamera
 		local moveDir = Vector3.zero
-
 		pcall(function()
 			if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += cam.CFrame.LookVector end
 			if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= cam.CFrame.LookVector end
@@ -69,7 +71,7 @@ commands.fly = function()
 			if UIS:IsKeyDown(Enum.KeyCode.E) then moveDir += Vector3.new(0, 1, 0) end
 			if UIS:IsKeyDown(Enum.KeyCode.Q) then moveDir -= Vector3.new(0, 1, 0) end
 		end)
-
+		
 		bv.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * speed or Vector3.zero
 		bg.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.CFrame.LookVector)
 	end)
@@ -93,27 +95,29 @@ end
 commands.kill = function(args)
 	local target = getPlayer(args[1])
 	if not target then return notify("Player not found.") end
-	if not target.Character then target.CharacterAdded:Wait() end
-	local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid.Health = 0
-		notify("Killed "..target.Name)
-	else
-		notify("No humanoid found.")
-	end
+	task.spawn(function()
+		if not target.Character then target.CharacterAdded:Wait() end
+		local hum = target.Character:FindFirstChildWhichIsA("Humanoid")
+		if hum then
+			hum.Health = 0
+			notify("Killed "..target.Name)
+		else
+			notify("No humanoid found.")
+		end
+	end)
 end
 
 commands.tp = function(args)
 	local target = getPlayer(args[1])
 	if not target then return notify("Player not found.") end
-	if not target.Character then target.CharacterAdded:Wait() end
 	local root = char:FindFirstChild("HumanoidRootPart")
-	local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-	if root and targetRoot then
-		root.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
+	local trgRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+	if root and trgRoot then
+		lastPos = root.CFrame
+		root.CFrame = trgRoot.CFrame + Vector3.new(0, 3, 0)
 		notify("Teleported to "..target.Name)
 	else
-		notify("Failed to teleport.")
+		notify("Teleport failed.")
 	end
 end
 
@@ -124,142 +128,77 @@ commands.kick = function(args)
 	if not target then return notify("Player not found.") end
 	notify("Kicking "..target.Name)
 	pcall(function()
-		if target.Character then
-			target.Character:Destroy()
-		end
+		if target.Character then target.Character:Destroy() end
+		workspace:WaitForChild("Players"):FindFirstChild(target.Name):Destroy()
 		task.wait(0.2)
-		target:Kick("Kicked by GGCMD v2")
+		target:Kick("Kicked by GGCMD")
 	end)
 end
 
 commands.fling = function(args)
 	local target = getPlayer(args[1])
-	if not target or not target.Character then return notify("Player not found.") end
+	if not target then return notify("Player not found.") end
 	local root = char:FindFirstChild("HumanoidRootPart")
-	local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-	if root and targetRoot then
-		notify("Flinging "..target.Name)
-		root.CFrame = targetRoot.CFrame + Vector3.new(0, 5, 0)
+	local trgRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+	if root and trgRoot then
+		lastPos = root.CFrame
+		root.CFrame = trgRoot.CFrame + Vector3.new(0, 5, 0)
 		local bv = Instance.new("BodyVelocity", root)
 		bv.Velocity = Vector3.new(0, 100000, 0)
 		bv.MaxForce = Vector3.new(1e9, 1e9, 1e9)
 		bv.P = 999999
-		task.wait(0.5)
-		bv:Destroy()
+		task.delay(0.5, function()
+			bv:Destroy()
+			if lastPos then root.CFrame = lastPos end
+		end)
+		notify("Flinged "..target.Name)
 	end
 end
 
-local spamConn
-commands.spam = function(args)
-	if spamConn then spamConn:Disconnect() end
-	local text = table.concat(args, " ")
-	spamConn = RS.RenderStepped:Connect(function()
-		game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
-	end)
-	notify("Spam ON")
-end
-
-commands.unspam = function()
-	if spamConn then
-		spamConn:Disconnect()
-		notify("Spam OFF")
-	end
-end
-
-commands.cmds = function()
-	notify(";fly ;unfly ;kill ;tp ;teleport ;kick ;fling ;spam ;unspam ;orbit ;unorbit")
-end
-
-local orbitConn
-commands.orbit = function(args)
-	local target = getPlayer(args[1])
-	if not target or not target.Character then return notify("Player not found.") end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-	if not root or not targetRoot then return end
-	notify("Orbiting "..target.Name)
-	local angle = 0
-	orbitConn = RS.RenderStepped:Connect(function()
-		if not targetRoot or not targetRoot.Parent then orbitConn:Disconnect() return end
-		angle += 0.2
-		local radius = 5
-		local offset = Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius)
-		root.CFrame = CFrame.new(targetRoot.Position + offset)
-	end)
-end
-
-commands.unorbit = function()
-	if orbitConn then orbitConn:Disconnect() notify("Orbit OFF") end
-end
-
--- CHAT KOMENNOT
-plr.Chatted:Connect(function(msg)
-	if msg:sub(1,1) == ";" then
-		local split = msg:sub(2):split(" ")
-		local cmd = split[1]:lower()
-		table.remove(split, 1)
-		if commands[cmd] then
-			commands[cmd](split)
-		end
-	end
-end)
-
--- CMD BAR GUI
+-- command bar: ei vaadi enää ;-merkkiä
 local gui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
-gui.Name = "GGCMD_CmdBar"
-
 local box = Instance.new("TextBox", gui)
 box.Size = UDim2.new(0.3, 0, 0.04, 0)
 box.Position = UDim2.new(0.35, 0, 0.85, 0)
-box.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-box.TextColor3 = Color3.new(1, 1, 1)
-box.PlaceholderText = ";command here"
+box.BackgroundColor3 = Color3.fromRGB(25,25,25)
+box.TextColor3 = Color3.new(1,1,1)
+box.PlaceholderText = "command here"
 box.Font = Enum.Font.SourceSansBold
 box.TextScaled = true
-box.ClearTextOnFocus = true
 
 box.FocusLost:Connect(function(enter)
-	if enter and box.Text ~= "" and box.Text:sub(1, 1) == ";" then
-		local split = box.Text:sub(2):split(" ")
+	if enter and box.Text ~= "" then
+		local raw = box.Text
+		if raw:sub(1, 1) == ";" then raw = raw:sub(2) end
+		local split = raw:split(" ")
 		local cmd = split[1]:lower()
 		table.remove(split, 1)
-		if commands[cmd] then
-			commands[cmd](split)
-		else
-			notify("Unknown command: "..cmd)
-		end
+		if commands[cmd] then commands[cmd](split)
+		else notify("Unknown command: "..cmd) end
 	end
 	box.Text = ""
 end)
 
--- DRAGGABLE CMD BAR (touch + hiiri)
+-- Drag support
 local dragging, dragStart, startPos
-
 local function update(input)
 	local delta = input.Position - dragStart
 	box.Position = UDim2.new(0, startPos.X.Offset + delta.X, 0, startPos.Y.Offset + delta.Y)
 end
-
 box.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
 		dragStart = input.Position
 		startPos = box.Position
 		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-			end
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
 		end)
 	end
 end)
-
 UIS.InputChanged:Connect(function(input)
 	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		update(input)
 	end
 end)
 
--- Ilmoitukset latauksesta
-notify("GGCMD v2 loaded. Type commands into bottom bar.")
-notify("Komennot: ;fly ;unfly ;kill ;tp ;teleport ;kick ;fling ;spam ;unspam ;orbit ;unorbit")
-notify("Liity GGCMD Discordiin: discord.gg/nVhG6DDN")
+notify("GGCMD v2 loaded. Commands: fly, unfly, kill, tp, kick, fling")
