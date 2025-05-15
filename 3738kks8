@@ -14,7 +14,7 @@ local admins = {lp.Name}
 local owners = {lp.Name}
 local prefix = ""
 local cmds = {}
-local gui, input
+local gui, input, ball, cmdFrame
 
 -- Utility
 local function isAdmin(name)
@@ -37,13 +37,23 @@ local function notify(text)
 	end)
 end
 
+local function findPlayer(partial)
+	partial = partial:lower()
+	for _, p in pairs(players:GetPlayers()) do
+		if p.Name:lower():sub(1, #partial) == partial then
+			return p
+		end
+	end
+	return nil
+end
+
 -- GUI
 local function createCmdBar()
 	gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
 	gui.Name = "GGCMD_GUI"
 	gui.ResetOnSpawn = false
 
-	local ball = Instance.new("TextButton", gui)
+	ball = Instance.new("TextButton", gui)
 	ball.Name = "GGCMD_Ball"
 	ball.Size = UDim2.new(0, 60, 0, 60)
 	ball.Position = UDim2.new(0.5, -30, 0.85, 0)
@@ -63,10 +73,10 @@ local function createCmdBar()
 	local corner = Instance.new("UICorner", ball)
 	corner.CornerRadius = UDim.new(1, 0)
 
-	local cmdFrame = Instance.new("Frame", gui)
+	cmdFrame = Instance.new("Frame", gui)
 	cmdFrame.Name = "CmdBar"
-	cmdFrame.Size = UDim2.new(0.3, 0, 0, 35)
-	cmdFrame.Position = UDim2.new(0.5, -150, 0.85, 0)
+	cmdFrame.Size = UDim2.new(0, 300, 0, 35)
+	cmdFrame.Position = ball.Position + UDim2.new(0, 0, -0.1, 0)
 	cmdFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 	cmdFrame.BorderSizePixel = 0
 	cmdFrame.BackgroundTransparency = 0.2
@@ -96,9 +106,15 @@ local function createCmdBar()
 			local cmd = args[1]:lower()
 			table.remove(args, 1)
 			if cmds[cmd] then
+				for i, v in ipairs(args) do
+					local found = findPlayer(v)
+					if found then
+						args[i] = found.Name
+					end
+				end
 				cmds[cmd](unpack(args))
 			else
-				notify("Tuntematon komento: "..cmd)
+				notify("Tuntematon komento: " .. cmd)
 			end
 			lastUsed = tick()
 			cmdFrame.Visible = false
@@ -113,6 +129,7 @@ local function createCmdBar()
 	end)
 
 	rs.RenderStepped:Connect(function()
+		cmdFrame.Position = ball.Position + UDim2.new(0, 0, -0.1, 0)
 		if cmdFrame.Visible and tick() - lastUsed > 10 then
 			cmdFrame.Visible = false
 			ball.Visible = true
