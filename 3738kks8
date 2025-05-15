@@ -27,29 +27,49 @@ local function isAdmin(name)
 end
 
 local function notify(text)
-	game.StarterGui:SetCore("SendNotification", {
-		Title = "GGCMD";
-		Text = text;
-		Duration = 5;
-	})
+	pcall(function()
+		game.StarterGui:SetCore("SendNotification", {
+			Title = "GGCMD";
+			Text = text;
+			Duration = 5;
+		})
+	end)
 end
 
 -- GUI
 local function createCmdBar()
 	gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
 	gui.Name = "GGCMD_GUI"
+	gui.ResetOnSpawn = false
 
-	local frame = Instance.new("Frame", gui)
-	frame.Name = "CmdBar"
-	frame.Size = UDim2.new(0.5, 0, 0, 40)
-	frame.Position = UDim2.new(0.25, 0, 0.85, 0)
-	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-	frame.BorderSizePixel = 0
-	frame.BackgroundTransparency = 0.2
-	frame.Active = true
-	frame.Draggable = true
+	local ball = Instance.new("TextButton", gui)
+	ball.Name = "GGCMD_Ball"
+	ball.Size = UDim2.new(0, 60, 0, 60)
+	ball.Position = UDim2.new(0.5, -30, 0.85, 0)
+	ball.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	ball.Text = "GGCMD"
+	ball.TextColor3 = Color3.fromRGB(255, 255, 255)
+	ball.Font = Enum.Font.SourceSansBold
+	ball.TextScaled = true
+	ball.AutoButtonColor = false
+	ball.BorderSizePixel = 0
+	ball.ClipsDescendants = true
+	ball.ZIndex = 10
+	ball.Active = true
+	ball.Draggable = true
+	ball.AnchorPoint = Vector2.new(0.5, 0)
 
-	local textBox = Instance.new("TextBox", frame)
+	local cmdFrame = Instance.new("Frame", gui)
+	cmdFrame.Name = "CmdBar"
+	cmdFrame.Size = UDim2.new(0.4, 0, 0, 40)
+	cmdFrame.Position = UDim2.new(0.5, -cmdFrame.Size.X.Offset/2, 0.85, 0)
+	cmdFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	cmdFrame.BorderSizePixel = 0
+	cmdFrame.BackgroundTransparency = 0.2
+	cmdFrame.Visible = false
+	cmdFrame.ZIndex = 10
+
+	local textBox = Instance.new("TextBox", cmdFrame)
 	textBox.Size = UDim2.new(1, 0, 1, 0)
 	textBox.Text = ""
 	textBox.PlaceholderText = "Kirjoita komento..."
@@ -60,6 +80,8 @@ local function createCmdBar()
 	textBox.Font = Enum.Font.SourceSans
 	textBox.TextXAlignment = Enum.TextXAlignment.Left
 	input = textBox
+
+	local lastUsed = tick()
 
 	textBox.FocusLost:Connect(function(enter)
 		if enter and isAdmin(lp.Name) then
@@ -73,6 +95,20 @@ local function createCmdBar()
 			else
 				notify("Tuntematon komento: "..cmd)
 			end
+			lastUsed = tick()
+		end
+	end)
+
+	ball.MouseButton1Click:Connect(function()
+		cmdFrame.Visible = not cmdFrame.Visible
+		if cmdFrame.Visible then
+			textBox:CaptureFocus()
+		end
+	end)
+
+	game:GetService("RunService").RenderStepped:Connect(function()
+		if cmdFrame.Visible and tick() - lastUsed > 10 then
+			cmdFrame.Visible = false
 		end
 	end)
 end
@@ -233,5 +269,5 @@ end
 
 -- Aloitus
 createCmdBar()
-notify("GGCMD v2 loaded succesfully!")
-notify("thx for using GGCMD ")
+notify("GGCMD v2 ladattu onnistuneesti!")
+notify("thx for using GGCMD")
