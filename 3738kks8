@@ -27,13 +27,11 @@ local function isAdmin(name)
 end
 
 local function notify(text)
-	pcall(function()
-		game.StarterGui:SetCore("SendNotification", {
-			Title = "GGCMD";
-			Text = text;
-			Duration = 5;
-		})
-	end)
+	game.StarterGui:SetCore("SendNotification", {
+		Title = "GGCMD";
+		Text = text;
+		Duration = 5;
+	})
 end
 
 -- GUI
@@ -59,9 +57,13 @@ local function createCmdBar()
 	ball.Draggable = true
 	ball.AnchorPoint = Vector2.new(0.5, 0)
 
+	-- Tee siitä oikeasti ympyrä
+	local corner = Instance.new("UICorner", ball)
+	corner.CornerRadius = UDim.new(1, 0)
+
 	local cmdFrame = Instance.new("Frame", gui)
 	cmdFrame.Name = "CmdBar"
-	cmdFrame.Size = UDim2.new(0.4, 0, 0, 40)
+	cmdFrame.Size = UDim2.new(0.3, 0, 0, 35)
 	cmdFrame.Position = UDim2.new(0.5, -cmdFrame.Size.X.Offset/2, 0.85, 0)
 	cmdFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 	cmdFrame.BorderSizePixel = 0
@@ -70,7 +72,8 @@ local function createCmdBar()
 	cmdFrame.ZIndex = 10
 
 	local textBox = Instance.new("TextBox", cmdFrame)
-	textBox.Size = UDim2.new(1, 0, 1, 0)
+	textBox.Size = UDim2.new(1, -10, 1, 0)
+	textBox.Position = UDim2.new(0, 5, 0, 0)
 	textBox.Text = ""
 	textBox.PlaceholderText = "Kirjoita komento..."
 	textBox.TextColor3 = Color3.fromRGB(255,255,255)
@@ -96,19 +99,22 @@ local function createCmdBar()
 				notify("Tuntematon komento: "..cmd)
 			end
 			lastUsed = tick()
+			cmdFrame.Visible = false
+			ball.Visible = true
 		end
 	end)
 
 	ball.MouseButton1Click:Connect(function()
-		cmdFrame.Visible = not cmdFrame.Visible
-		if cmdFrame.Visible then
-			textBox:CaptureFocus()
-		end
+		cmdFrame.Visible = true
+		ball.Visible = false
+		textBox:CaptureFocus()
 	end)
 
+	-- Piilota komentopalkki automaattisesti jos ei käytetä
 	game:GetService("RunService").RenderStepped:Connect(function()
 		if cmdFrame.Visible and tick() - lastUsed > 10 then
 			cmdFrame.Visible = false
+			ball.Visible = true
 		end
 	end)
 end
