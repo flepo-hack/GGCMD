@@ -9,6 +9,7 @@ local players = game:GetService("Players")
 local lp = players.LocalPlayer
 local mouse = lp:GetMouse()
 local uis = game:GetService("UserInputService")
+local rs = game:GetService("RunService")
 local admins = {lp.Name}
 local owners = {lp.Name}
 local prefix = ""
@@ -27,11 +28,13 @@ local function isAdmin(name)
 end
 
 local function notify(text)
-	game.StarterGui:SetCore("SendNotification", {
-		Title = "GGCMD";
-		Text = text;
-		Duration = 5;
-	})
+	pcall(function()
+		game.StarterGui:SetCore("SendNotification", {
+			Title = "GGCMD";
+			Text = text;
+			Duration = 5;
+		})
+	end)
 end
 
 -- GUI
@@ -57,14 +60,13 @@ local function createCmdBar()
 	ball.Draggable = true
 	ball.AnchorPoint = Vector2.new(0.5, 0)
 
-	-- Tee siitä oikeasti ympyrä
 	local corner = Instance.new("UICorner", ball)
 	corner.CornerRadius = UDim.new(1, 0)
 
 	local cmdFrame = Instance.new("Frame", gui)
 	cmdFrame.Name = "CmdBar"
 	cmdFrame.Size = UDim2.new(0.3, 0, 0, 35)
-	cmdFrame.Position = UDim2.new(0.5, -cmdFrame.Size.X.Offset/2, 0.85, 0)
+	cmdFrame.Position = UDim2.new(0.5, -150, 0.85, 0)
 	cmdFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 	cmdFrame.BorderSizePixel = 0
 	cmdFrame.BackgroundTransparency = 0.2
@@ -110,8 +112,7 @@ local function createCmdBar()
 		textBox:CaptureFocus()
 	end)
 
-	-- Piilota komentopalkki automaattisesti jos ei käytetä
-	game:GetService("RunService").RenderStepped:Connect(function()
+	rs.RenderStepped:Connect(function()
 		if cmdFrame.Visible and tick() - lastUsed > 10 then
 			cmdFrame.Visible = false
 			ball.Visible = true
@@ -273,7 +274,71 @@ cmds["witherws"] = function(name)
 	end
 end
 
+cmds["gun"] = function()
+	local character = lp.Character
+	if not character then return end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if lp.Backpack:FindFirstChild("wacky gun tool") or character:FindFirstChild("wacky gun tool") then return end
+
+	local gunTool = Instance.new("Tool", lp.Backpack)
+	gunTool.RequiresHandle = false
+	gunTool.CanBeDropped = false
+	gunTool.Name = "wacky gun tool"
+	gunTool.ToolTip = "Click a player to 'shoot' them"
+	gunTool.TextureId = "rbxassetid://822278164"
+
+	local handle = Instance.new("Part", gunTool)
+	handle.Name = "Handle"
+	handle.Transparency = 1
+	handle.CanCollide = false
+	handle.Size = Vector3.new(0.001,0.001,0.001)
+	handle.Massless = true
+
+	local track
+	gunTool.Activated:Connect(function()
+		local targetPart = mouse.Target
+		if not targetPart then return end
+		for _, v in pairs(players:GetPlayers()) do
+			local char = v.Character
+			if char then
+				for _, part in pairs(char:GetDescendants()) do
+					if part:IsA("BasePart") and part == targetPart then
+						if humanoid.RigType == Enum.HumanoidRigType.R6 then
+							if track then
+								track.TimePosition = 0.4
+								wait(0.25)
+								track.TimePosition = 0.18
+							end
+						end
+						cmds["kill"](v.Name)
+						break
+					end
+				end
+			end
+		end
+	end)
+
+	if humanoid.RigType ~= Enum.HumanoidRigType.R6 then return end
+
+	local animation = Instance.new("Animation")
+	animation.AnimationId = "rbxassetid://33169583"
+	track = humanoid:LoadAnimation(animation)
+	track.Priority = Enum.AnimationPriority.Movement
+
+	gunTool.Equipped:Connect(function()
+		track:Play()
+		wait()
+		track:AdjustSpeed(0)
+		track.TimePosition = 0.18
+		track:AdjustWeight(0.95)
+	end)
+
+	gunTool.Unequipped:Connect(function()
+		track:Stop()
+	end)
+end
+
 -- Aloitus
 createCmdBar()
 notify("GGCMD v2 ladattu onnistuneesti!")
-notify("thx for using GGCMD")
+notify("Thx for using GGCMD!")
