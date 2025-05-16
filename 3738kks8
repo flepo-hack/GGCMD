@@ -1,7 +1,7 @@
 -- GGCMD v2 Täysi versio (QuirckyCMD-tyyli, kaikki komennot, cmdbar liikkuu oikealta vasemmalle)
 
 --// Asetukset
-local omistajat = {"SinunNimesi", "ToinenNimi"}
+local omistajat = {"Google", "poika"}
 
 --// Pääkehys
 local cmdGui = Instance.new("ScreenGui", game.CoreGui)
