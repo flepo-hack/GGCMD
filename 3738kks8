@@ -1,361 +1,235 @@
---[[
-  GGCMD v2 - Täysi versio, QuirckyCMD-tyylinen
-  Tekijä: GGCMD-tiimi
-  Discord: discord.gg/ggcmd
-  Kaikki komennot käytettävissä ilman puolipistettä
-]]
+-- GGCMD v2 Täysi versio (QuirckyCMD-tyyli, kaikki komennot, cmdbar liikkuu oikealta vasemmalle)
 
-local players = game:GetService("Players")
-local lp = players.LocalPlayer
-local mouse = lp:GetMouse()
-local uis = game:GetService("UserInputService")
-local rs = game:GetService("RunService")
-local admins = {lp.Name}
-local owners = {lp.Name}
-local prefix = ""
-local cmds = {}
-local gui, input, ball, cmdFrame
+--// Asetukset
+local omistajat = {"SinunNimesi", "ToinenNimi"}
 
--- Utility
-local function isAdmin(name)
-	for _, admin in pairs(admins) do
-		if admin:lower() == name:lower() then return true end
-	end
-	for _, owner in pairs(owners) do
-		if owner:lower() == name:lower() then return true end
-	end
-	return false
-end
+--// Pääkehys
+local cmdGui = Instance.new("ScreenGui", game.CoreGui)
+cmdGui.Name = "GGCMD"
 
-local function notify(text)
-	pcall(function()
-		game.StarterGui:SetCore("SendNotification", {
-			Title = "GGCMD";
-			Text = text;
-			Duration = 5;
-		})
+local bar = Instance.new("Frame", cmdGui)
+bar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+bar.Size = UDim2.new(1, 0, 0, 30)
+bar.Position = UDim2.new(0, 0, 1, -30)
+bar.BorderSizePixel = 0
+bar.ClipsDescendants = true
+bar.Active = true
+bar.Draggable = true
+
+local cmdText = Instance.new("TextBox", bar)
+cmdText.Size = UDim2.new(1, 0, 1, 0)
+cmdText.BackgroundTransparency = 1
+cmdText.TextColor3 = Color3.fromRGB(255, 255, 255)
+cmdText.TextXAlignment = Enum.TextXAlignment.Left
+cmdText.Font = Enum.Font.SourceSans
+cmdText.TextSize = 20
+cmdText.PlaceholderText = "Enter command..."
+cmdText.ClearTextOnFocus = false
+cmdText.Text = ""
+
+-- Komentohistoria (animaatio oikealta vasemmalle)
+local commandHistory = Instance.new("TextLabel", bar)
+commandHistory.Size = UDim2.new(2, 0, 1, 0)
+commandHistory.Position = UDim2.new(1, 0, 0, 0)
+commandHistory.BackgroundTransparency = 1
+commandHistory.TextColor3 = Color3.fromRGB(120, 120, 120)
+commandHistory.TextXAlignment = Enum.TextXAlignment.Right
+commandHistory.Font = Enum.Font.SourceSansItalic
+commandHistory.TextSize = 18
+commandHistory.Text = ""
+commandHistory.TextWrapped = false
+commandHistory.TextScaled = false
+
+local function scrollHistory(text)
+	commandHistory.Text = commandHistory.Text .. "   " .. text
+	spawn(function()
+		while true do
+			for i = 1, 400 do
+				commandHistory.Position = commandHistory.Position - UDim2.new(0.005, 0, 0, 0)
+				wait(0.01)
+			end
+			commandHistory.Position = UDim2.new(1, 0, 0, 0)
+			commandHistory.Text = ""
+		end
 	end)
 end
 
-local function findPlayer(partial)
-	partial = partial:lower()
-	for _, p in pairs(players:GetPlayers()) do
-		if p.Name:lower():sub(1, #partial) == partial then
+--// Päällä olevat toiminnot
+ggRunning = true
+local admins = {}
+for _, name in ipairs(omistajat) do admins[name] = true end
+
+--// Komennot
+local komennot = {}
+
+function addCommand(nimi, funktio)
+	komennot[nimi] = funktio
+end
+
+--// Apufunktiot
+function haePelaaja(nimi)
+	for _, p in ipairs(game.Players:GetPlayers()) do
+		if p.Name:lower():sub(1, #nimi) == nimi:lower() then
 			return p
 		end
 	end
-	return nil
 end
 
--- GUI
-local function createCmdBar()
-	gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
-	gui.Name = "GGCMD_GUI"
-	gui.ResetOnSpawn = false
-
-	ball = Instance.new("TextButton", gui)
-	ball.Name = "GGCMD_Ball"
-	ball.Size = UDim2.new(0, 60, 0, 60)
-	ball.Position = UDim2.new(0.5, -30, 0.85, 0)
-	ball.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-	ball.Text = "GGCMD"
-	ball.TextColor3 = Color3.fromRGB(255, 255, 255)
-	ball.Font = Enum.Font.SourceSansBold
-	ball.TextScaled = true
-	ball.AutoButtonColor = false
-	ball.BorderSizePixel = 0
-	ball.ClipsDescendants = true
-	ball.ZIndex = 10
-	ball.Active = true
-	ball.Draggable = true
-	ball.AnchorPoint = Vector2.new(0.5, 0)
-
-	local corner = Instance.new("UICorner", ball)
-	corner.CornerRadius = UDim.new(1, 0)
-
-	cmdFrame = Instance.new("Frame", gui)
-	cmdFrame.Name = "CmdBar"
-	cmdFrame.Size = UDim2.new(0, 300, 0, 35)
-	cmdFrame.Position = ball.Position + UDim2.new(0, 0, -0.1, 0)
-	cmdFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-	cmdFrame.BorderSizePixel = 0
-	cmdFrame.BackgroundTransparency = 0.2
-	cmdFrame.Visible = false
-	cmdFrame.ZIndex = 10
-
-	local textBox = Instance.new("TextBox", cmdFrame)
-	textBox.Size = UDim2.new(1, -10, 1, 0)
-	textBox.Position = UDim2.new(0, 5, 0, 0)
-	textBox.Text = ""
-	textBox.PlaceholderText = "Kirjoita komento..."
-	textBox.TextColor3 = Color3.fromRGB(255,255,255)
-	textBox.BackgroundTransparency = 1
-	textBox.ClearTextOnFocus = false
-	textBox.TextScaled = true
-	textBox.Font = Enum.Font.SourceSans
-	textBox.TextXAlignment = Enum.TextXAlignment.Left
-	input = textBox
-
-	local lastUsed = tick()
-
-	textBox.FocusLost:Connect(function(enter)
-		if enter and isAdmin(lp.Name) then
-			local txt = textBox.Text
-			textBox.Text = ""
-			local args = txt:split(" ")
-			local cmd = args[1]:lower()
-			table.remove(args, 1)
-			if cmds[cmd] then
-				for i, v in ipairs(args) do
-					local found = findPlayer(v)
-					if found then
-						args[i] = found.Name
-					end
-				end
-				cmds[cmd](unpack(args))
-			else
-				notify("Tuntematon komento: " .. cmd)
-			end
-			lastUsed = tick()
-			cmdFrame.Visible = false
-			ball.Visible = true
-		end
-	end)
-
-	ball.MouseButton1Click:Connect(function()
-		cmdFrame.Visible = true
-		ball.Visible = false
-		textBox:CaptureFocus()
-	end)
-
-	rs.RenderStepped:Connect(function()
-		cmdFrame.Position = ball.Position + UDim2.new(0, 0, -0.1, 0)
-		if cmdFrame.Visible and tick() - lastUsed > 10 then
-			cmdFrame.Visible = false
-			ball.Visible = true
-		end
-	end)
+function ilmoitus(txt)
+	local m = Instance.new("Message", game.Workspace)
+	m.Text = txt
+	game:GetService("Debris"):AddItem(m, 3)
 end
 
--- Komennot
-cmds["fly"] = function()
-	loadstring(game:HttpGet("https://pastebin.com/raw/sxg4k3D2"))()
-end
+-- Komennot (täydellinen lista)
+addCommand("fly", function(plr)
+	loadstring(game:HttpGet("https://pastebin.com/raw/HX7yVQKZ"))()
+end)
 
-cmds["unfly"] = function()
-	if _G.Flying then _G.Flying = false end
-end
+addCommand("unfly", function(plr)
+	pcall(function() _G.FLYING = false end)
+end)
 
-cmds["flyspeed"] = function(s)
-	_G.FLYSPEED = tonumber(s) or 2
-end
+addCommand("flyspeed", function(plr, args)
+	_G.FLYSPEED = tonumber(args[2]) or 1
+end)
 
-cmds["kill"] = function(name)
-	local target = players:FindFirstChild(name)
+addCommand("kill", function(plr, args)
+	local target = haePelaaja(args[2])
 	if target and target.Character then
 		target.Character:BreakJoints()
 	end
-end
+end)
 
-cmds["tp"] = function(name)
-	local target = players:FindFirstChild(name)
-	if target and target.Character and lp.Character then
-		lp.Character:PivotTo(target.Character:GetPivot())
+addCommand("tp", function(plr, args)
+	local target = haePelaaja(args[2])
+	if target and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+		plr.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
 	end
-end
+end)
 
-cmds["teleport"] = cmds["tp"]
+komennot["teleport"] = komennot["tp"]
 
-cmds["kick"] = function(name)
-	local target = players:FindFirstChild(name)
+addCommand("bring", function(plr, args)
+	local target = haePelaaja(args[2])
+	if target and target.Character and plr.Character then
+		target.Character:MoveTo(plr.Character.HumanoidRootPart.Position)
+	end
+end)
+
+addCommand("kick", function(plr, args)
+	local target = haePelaaja(args[2])
 	if target then
-		target:Destroy()
+		target:Kick("Sinut potkittiin pelistä")
 	end
-end
+end)
 
-cmds["fling"] = function(name)
-	local target = players:FindFirstChild(name)
-	if target and target.Character and lp.Character then
-		local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
-		local thrp = target.Character:FindFirstChild("HumanoidRootPart")
-		if hrp and thrp then
-			hrp.CFrame = thrp.CFrame
-			wait(0.1)
-			local v = Instance.new("BodyVelocity", hrp)
-			v.Velocity = Vector3.new(9999,9999,9999)
-			v.MaxForce = Vector3.new(math.huge,math.huge,math.huge)
-			game.Debris:AddItem(v, 0.1)
-		end
+addCommand("fling", function(plr, args)
+	local target = haePelaaja(args[2])
+	if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+		target.Character.HumanoidRootPart.Velocity = Vector3.new(0, 100, 0)
 	end
-end
+end)
 
-cmds["bring"] = function(name)
-	local target = players:FindFirstChild(name)
-	if target and target.Character and lp.Character then
-		local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
-		local thrp = target.Character:FindFirstChild("HumanoidRootPart")
-		if hrp and thrp then
-			thrp.CFrame = hrp.CFrame + Vector3.new(2,0,0)
-		end
+addCommand("torsofling", function(plr, args)
+	local target = haePelaaja(args[2])
+	if target and target.Character then
+		target.Character.HumanoidRootPart.Anchored = true
+		wait(1)
+		target.Character.HumanoidRootPart.Anchored = false
 	end
-end
+end)
 
-cmds["spam"] = function(...)
-	local text = table.concat({...}, " ")
-	_G.Spamming = true
-	task.spawn(function()
-		while _G.Spamming do
-			game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
+addCommand("untorsofling", function(plr, args)
+	local target = haePelaaja(args[2])
+	if target and target.Character then
+		target.Character.HumanoidRootPart.Anchored = false
+	end
+end)
+
+local spamming = {}
+addCommand("spam", function(plr, args)
+	local msg = table.concat(args, " ", 2)
+	spamming[plr.Name] = true
+	spawn(function()
+		while spamming[plr.Name] do
+			game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
 			wait(0.5)
 		end
 	end)
-end
+end)
 
-cmds["unspam"] = function()
-	_G.Spamming = false
-end
+addCommand("unspam", function(plr)
+	spamming[plr.Name] = false
+end)
 
-cmds["orbit"] = function(name)
-	local target = players:FindFirstChild(name)
-	if target and target.Character then
-		_G.Orbiting = true
-		task.spawn(function()
-			while _G.Orbiting do
-				local angle = tick() * 5
-				local pos = target.Character:GetPivot().Position
-				local newPos = pos + Vector3.new(math.cos(angle)*5, 2, math.sin(angle)*5)
-				if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-					lp.Character:PivotTo(CFrame.new(newPos, pos))
-				end
-				wait()
-			end
-		end)
-	end
-end
-
-cmds["unorbit"] = function()
-	_G.Orbiting = false
-end
-
-cmds["bang"] = function(name)
-	local target = players:FindFirstChild(name)
-	if target and target.Character and lp.Character then
-		local tool = Instance.new("Tool")
-		tool.RequiresHandle = false
-		tool.Name = "Bang"
-		tool.Parent = lp.Backpack
-		local anim = Instance.new("Animation")
-		anim.AnimationId = "rbxassetid://148840371"
-		anim.Parent = tool
-		tool.Activated:Connect(function()
-			local h = lp.Character:FindFirstChildOfClass("Humanoid")
-			if h then h:LoadAnimation(anim):Play() end
+local orbiting = {}
+addCommand("orbit", function(plr, args)
+	local target = haePelaaja(args[2])
+	orbiting[plr.Name] = true
+	spawn(function()
+		local angle = 0
+		while orbiting[plr.Name] and target and target.Character do
+			local pos = target.Character.HumanoidRootPart.Position
+			angle += 0.1
+			local x = math.cos(angle) * 5
+			local z = math.sin(angle) * 5
+			plr.Character.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(x, 2, z))
 			wait()
-			target.Character:BreakJoints()
-		end)
-	end
-end
-
-cmds["unbang"] = function()
-	for _, tool in pairs(lp.Backpack:GetChildren()) do
-		if tool.Name == "Bang" then
-			tool:Destroy()
-		end
-	end
-end
-
-cmds["nuke"] = function()
-	for _, p in pairs(players:GetPlayers()) do
-		if p ~= lp then
-			p:Kick("Nuked by "..lp.Name)
-		end
-	end
-end
-
-cmds["wither"] = function(name)
-	local target = players:FindFirstChild(name)
-	if target and target.Character then
-		for _, part in pairs(target.Character:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.Anchored = false
-				part.Velocity = Vector3.new(math.random(-100,100),math.random(100,200),math.random(-100,100))
-			end
-		end
-	end
-end
-
-cmds["witherws"] = function(name)
-	local target = players:FindFirstChild(name)
-	if target and target.Character then
-		target.Character:BreakJoints()
-	end
-end
-
-cmds["gun"] = function()
-	local character = lp.Character
-	if not character then return end
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if lp.Backpack:FindFirstChild("wacky gun tool") or character:FindFirstChild("wacky gun tool") then return end
-
-	local gunTool = Instance.new("Tool", lp.Backpack)
-	gunTool.RequiresHandle = false
-	gunTool.CanBeDropped = false
-	gunTool.Name = "wacky gun tool"
-	gunTool.ToolTip = "Click a player to 'shoot' them"
-	gunTool.TextureId = "rbxassetid://822278164"
-
-	local handle = Instance.new("Part", gunTool)
-	handle.Name = "Handle"
-	handle.Transparency = 1
-	handle.CanCollide = false
-	handle.Size = Vector3.new(0.001,0.001,0.001)
-	handle.Massless = true
-
-	local track
-	gunTool.Activated:Connect(function()
-		local targetPart = mouse.Target
-		if not targetPart then return end
-		for _, v in pairs(players:GetPlayers()) do
-			local char = v.Character
-			if char then
-				for _, part in pairs(char:GetDescendants()) do
-					if part:IsA("BasePart") and part == targetPart then
-						if humanoid.RigType == Enum.HumanoidRigType.R6 then
-							if track then
-								track.TimePosition = 0.4
-								wait(0.25)
-								track.TimePosition = 0.18
-							end
-						end
-						cmds["kill"](v.Name)
-						break
-					end
-				end
-			end
 		end
 	end)
+end)
 
-	if humanoid.RigType ~= Enum.HumanoidRigType.R6 then return end
+addCommand("unorbit", function(plr)
+	orbiting[plr.Name] = false
+end)
 
-	local animation = Instance.new("Animation")
-	animation.AnimationId = "rbxassetid://33169583"
-	track = humanoid:LoadAnimation(animation)
-	track.Priority = Enum.AnimationPriority.Movement
+addCommand("bang", function(plr, args)
+	local target = haePelaaja(args[2])
+	if plr.Character and target and target.Character then
+		plr.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
+		plr.Character.HumanoidRootPart.Anchored = true
+	end
+end)
 
-	gunTool.Equipped:Connect(function()
-		track:Play()
-		wait()
-		track:AdjustSpeed(0)
-		track.TimePosition = 0.18
-		track:AdjustWeight(0.95)
-	end)
+addCommand("unbang", function(plr)
+	if plr.Character then
+		plr.Character.HumanoidRootPart.Anchored = false
+	end
+end)
 
-	gunTool.Unequipped:Connect(function()
-		track:Stop()
-	end)
-end
+addCommand("nuke", function(plr)
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			obj.Anchored = false
+			obj.Velocity = Vector3.new(0, 100, 0)
+		end
+	end
+end)
 
--- Aloitus
-createCmdBar()
-notify("GGCMD v2 ladattu onnistuneesti!")
-notify("Thx for using GGCMD!")
+addCommand("wither", function(plr)
+	for _, p in pairs(game.Players:GetPlayers()) do
+		if p ~= plr and p.Character then
+			p.Character:BreakJoints()
+		end
+	end
+end)
+
+komennot["witherws"] = komennot["wither"]
+
+--// Komennon suoritus
+cmdText.FocusLost:Connect(function(enter)
+	if enter and ggRunning then
+		local parts = cmdText.Text:split(" ")
+		local cmd = parts[1]:lower()
+		if komennot[cmd] then
+			komennot[cmd](game.Players.LocalPlayer, parts)
+			scrollHistory(cmdText.Text)
+		else
+			ilmoitus("Invalid command: "..cmd)
+		end
+		cmdText.Text = ""
+	end
+end)
+
+ilmoitus("GGCMD v2 loaded!")
