@@ -1,25 +1,25 @@
--- GGCMD v2 Täysi versio (QuirckyCMD-tyyli, kaikki komennot, cmdbar liikkuu oikealta vasemmalle)
+--GGCMD v2 By Googlepoika 
 
 --// Asetukset
 local omistajat = {"Google", "poika"}
 
---// Pääkehys
+--// Pääkehys ja UI
 local cmdGui = Instance.new("ScreenGui", game.CoreGui)
 cmdGui.Name = "GGCMD"
 
 local bar = Instance.new("Frame", cmdGui)
-bar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-bar.Size = UDim2.new(1, 0, 0, 30)
-bar.Position = UDim2.new(0, 0, 1, -30)
+bar.BackgroundColor3 = Color3.fromRGB(30,30,30)
+bar.Size = UDim2.new(1,0,0,30)
+bar.Position = UDim2.new(0,0,1,-30)
 bar.BorderSizePixel = 0
 bar.ClipsDescendants = true
 bar.Active = true
 bar.Draggable = true
 
 local cmdText = Instance.new("TextBox", bar)
-cmdText.Size = UDim2.new(1, 0, 1, 0)
+cmdText.Size = UDim2.new(1,0,1,0)
 cmdText.BackgroundTransparency = 1
-cmdText.TextColor3 = Color3.fromRGB(255, 255, 255)
+cmdText.TextColor3 = Color3.fromRGB(255,255,255)
 cmdText.TextXAlignment = Enum.TextXAlignment.Left
 cmdText.Font = Enum.Font.SourceSans
 cmdText.TextSize = 20
@@ -27,209 +27,206 @@ cmdText.PlaceholderText = "Enter command..."
 cmdText.ClearTextOnFocus = false
 cmdText.Text = ""
 
--- Komentohistoria (animaatio oikealta vasemmalle)
 local commandHistory = Instance.new("TextLabel", bar)
-commandHistory.Size = UDim2.new(2, 0, 1, 0)
-commandHistory.Position = UDim2.new(1, 0, 0, 0)
+commandHistory.Size = UDim2.new(2,0,1,0)
+commandHistory.Position = UDim2.new(1,0,0,0)
 commandHistory.BackgroundTransparency = 1
-commandHistory.TextColor3 = Color3.fromRGB(120, 120, 120)
+commandHistory.TextColor3 = Color3.fromRGB(120,120,120)
 commandHistory.TextXAlignment = Enum.TextXAlignment.Right
 commandHistory.Font = Enum.Font.SourceSansItalic
 commandHistory.TextSize = 18
 commandHistory.Text = ""
-commandHistory.TextWrapped = false
-commandHistory.TextScaled = false
 
+--// Historial liikkuu oikealta vasemmalle
 local function scrollHistory(text)
-	commandHistory.Text = commandHistory.Text .. "   " .. text
-	spawn(function()
-		while true do
-			for i = 1, 400 do
-				commandHistory.Position = commandHistory.Position - UDim2.new(0.005, 0, 0, 0)
-				wait(0.01)
-			end
-			commandHistory.Position = UDim2.new(1, 0, 0, 0)
-			commandHistory.Text = ""
-		end
-	end)
+    commandHistory.Text = commandHistory.Text .. "   " .. text
+    spawn(function()
+        while true do
+            for i=1, 400 do
+                commandHistory.Position = commandHistory.Position - UDim2.new(0.005,0,0,0)
+                wait(0.01)
+            end
+            commandHistory.Position = UDim2.new(1,0,0,0)
+            commandHistory.Text = ""
+        end
+    end)
 end
 
---// Päällä olevat toiminnot
-ggRunning = true
-local admins = {}
-for _, name in ipairs(omistajat) do admins[name] = true end
-
---// Komennot
-local komennot = {}
+--// Hallinta ja komennot
+local commands = {} -- komento-funktiot tallennetaan tähän
+local komennot = {} -- käytetään alias- ja suorituslogiikkaan
 
 function addCommand(nimi, funktio)
-	komennot[nimi] = funktio
+    commands[nimi] = funktio
 end
 
---// Apufunktiot
-function haePelaaja(nimi)
-	for _, p in ipairs(game.Players:GetPlayers()) do
-		if p.Name:lower():sub(1, #nimi) == nimi:lower() then
-			return p
-		end
-	end
+--// Käytäntö: haetaan pelaaja
+local function haePelaaja(nimi)
+    for _, p in ipairs(game.Players:GetPlayers()) do
+        if p.Name:lower():sub(1, #nimi) == nimi:lower() then
+            return p
+        end
+    end
 end
 
-function ilmoitus(txt)
-	local m = Instance.new("Message", game.Workspace)
-	m.Text = txt
-	game:GetService("Debris"):AddItem(m, 3)
+local function ilmoitus(txt)
+    local m = Instance.new("Message", workspace)
+    m.Text = txt
+    game:GetService("Debris"):AddItem(m, 3)
 end
 
--- Komennot (täydellinen lista)
+--// Omistajat ja privilegiumtaso
+local omistajat = {"Google", "poika"}
+local privilegeLevels = {}
+for _, n in ipairs(omistajat) do privilegeLevels[n] = 3 end
+
+--// Komentot
 addCommand("fly", function(plr)
-	loadstring(game:HttpGet("https://pastebin.com/raw/HX7yVQKZ"))()
+    loadstring(game:HttpGet("https://pastebin.com/raw/HX7yVQKZ"))()
 end)
 
 addCommand("unfly", function(plr)
-	pcall(function() _G.FLYING = false end)
+    pcall(function() _G.FLYING = false end)
 end)
 
 addCommand("flyspeed", function(plr, args)
-	_G.FLYSPEED = tonumber(args[2]) or 1
+    _G.FLYSPEED = tonumber(args[2]) or 1
 end)
 
 addCommand("kill", function(plr, args)
-	local target = haePelaaja(args[2])
-	if target and target.Character then
-		target.Character:BreakJoints()
-	end
+    local target = haePelaaja(args[2])
+    if target and target.Character then
+        target.Character:BreakJoints()
+    end
 end)
 
 addCommand("tp", function(plr, args)
-	local target = haePelaaja(args[2])
-	if target and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-		plr.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
-	end
+    local target = haePelaaja(args[2])
+    if target and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+        plr.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
+    end
 end)
 
 komennot["teleport"] = komennot["tp"]
 
 addCommand("bring", function(plr, args)
-	local target = haePelaaja(args[2])
-	if target and target.Character and plr.Character then
-		target.Character:MoveTo(plr.Character.HumanoidRootPart.Position)
-	end
+    local target = haePelaaja(args[2])
+    if target and target.Character and plr.Character then
+        target.Character:MoveTo(plr.Character.HumanoidRootPart.Position)
+    end
 end)
 
 addCommand("kick", function(plr, args)
-	local target = haePelaaja(args[2])
-	if target then
-		target:Kick("Sinut potkittiin pelistä")
-	end
+    local target = haePelaaja(args[2])
+    if target then
+        target:Kick("Sinut potkittiin pelistä")
+    end
 end)
 
 addCommand("fling", function(plr, args)
-	local target = haePelaaja(args[2])
-	if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-		target.Character.HumanoidRootPart.Velocity = Vector3.new(0, 100, 0)
-	end
+    local target = haePelaaja(args[2])
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        target.Character.HumanoidRootPart.Velocity = Vector3.new(0, 100, 0)
+    end
 end)
 
 addCommand("torsofling", function(plr, args)
-	local target = haePelaaja(args[2])
-	if target and target.Character then
-		target.Character.HumanoidRootPart.Anchored = true
-		wait(1)
-		target.Character.HumanoidRootPart.Anchored = false
-	end
+    local target = haePelaaja(args[2])
+    if target and target.Character then
+        target.Character.HumanoidRootPart.Anchored = true
+        wait(1)
+        target.Character.HumanoidRootPart.Anchored = false
+    end
 end)
 
 addCommand("untorsofling", function(plr, args)
-	local target = haePelaaja(args[2])
-	if target and target.Character then
-		target.Character.HumanoidRootPart.Anchored = false
-	end
+    local target = haePelaaja(args[2])
+    if target and target.Character then
+        target.Character.HumanoidRootPart.Anchored = false
+    end
 end)
 
 local spamming = {}
 addCommand("spam", function(plr, args)
-	local msg = table.concat(args, " ", 2)
-	spamming[plr.Name] = true
-	spawn(function()
-		while spamming[plr.Name] do
-			game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
-			wait(0.5)
-		end
-	end)
+    local msg = table.concat(args, " ", 2)
+    spamming[plr.Name] = true
+    spawn(function()
+        while spamming[plr.Name] do
+            game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
+            wait(0.5)
+        end
+    end)
 end)
 
 addCommand("unspam", function(plr)
-	spamming[plr.Name] = false
+    spamming[plr.Name] = false
 end)
 
 local orbiting = {}
 addCommand("orbit", function(plr, args)
-	local target = haePelaaja(args[2])
-	orbiting[plr.Name] = true
-	spawn(function()
-		local angle = 0
-		while orbiting[plr.Name] and target and target.Character do
-			local pos = target.Character.HumanoidRootPart.Position
-			angle += 0.1
-			local x = math.cos(angle) * 5
-			local z = math.sin(angle) * 5
-			plr.Character.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(x, 2, z))
-			wait()
-		end
-	end)
+    local target = haePelaaja(args[2])
+    orbiting[plr.Name] = true
+    spawn(function()
+        local angle = 0
+        while orbiting[plr.Name] and target and target.Character do
+            local pos = target.Character.HumanoidRootPart.Position
+            local x = math.cos(angle) * 5
+            local z = math.sin(angle) * 5
+            plr.Character.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(x, 2, z))
+            angle = angle + 0.1
+            wait()
+        end
+    end)
 end)
 
 addCommand("unorbit", function(plr)
-	orbiting[plr.Name] = false
+    orbiting[plr.Name] = false
 end)
 
 addCommand("bang", function(plr, args)
-	local target = haePelaaja(args[2])
-	if plr.Character and target and target.Character then
-		plr.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
-		plr.Character.HumanoidRootPart.Anchored = true
-	end
+    local target = haePelaaja(args[2])
+    if plr.Character and target and target.Character then
+        plr.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
+        plr.Character.HumanoidRootPart.Anchored = true
+    end
 end)
 
 addCommand("unbang", function(plr)
-	if plr.Character then
-		plr.Character.HumanoidRootPart.Anchored = false
-	end
+    if plr.Character then
+        plr.Character.HumanoidRootPart.Anchored = false
+    end
 end)
 
 addCommand("nuke", function(plr)
-	for _, obj in pairs(workspace:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			obj.Anchored = false
-			obj.Velocity = Vector3.new(0, 100, 0)
-		end
-	end
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Anchored = false
+            obj.Velocity = Vector3.new(0, 100, 0)
+        end
+    end
 end)
 
 addCommand("wither", function(plr)
-	for _, p in pairs(game.Players:GetPlayers()) do
-		if p ~= plr and p.Character then
-			p.Character:BreakJoints()
-		end
-	end
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p ~= plr and p.Character then
+            p.Character:BreakJoints()
+        end
+    end
 end)
-
-komennot["witherws"] = komennot["wither"]
 
 --// Komennon suoritus
 cmdText.FocusLost:Connect(function(enter)
-	if enter and ggRunning then
-		local parts = cmdText.Text:split(" ")
-		local cmd = parts[1]:lower()
-		if komennot[cmd] then
-			komennot[cmd](game.Players.LocalPlayer, parts)
-			scrollHistory(cmdText.Text)
-		else
-			ilmoitus("Invalid command: "..cmd)
-		end
-		cmdText.Text = ""
-	end
+    if enter then
+        local parts = cmdText.Text:split(" ")
+        local cmd = parts[1]:lower()
+        if commands[cmd] then
+            commands[cmd](game.Players.LocalPlayer, parts)
+            scrollHistory(cmdText.Text)
+        else
+            ilmoitus("Invalid command: " .. cmd)
+        end
+        cmdText.Text = ""
+    end
 end)
 
 ilmoitus("GGCMD v2 loaded!")
