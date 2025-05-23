@@ -1,4 +1,4 @@
---GGCMD v2 By Googlepoika 
+--//GGCMD v2 By Googlepoika 
 
 --// Asetukset
 local omistajat = {"Google", "poika"}
@@ -7,17 +7,19 @@ local omistajat = {"Google", "poika"}
 local cmdGui = Instance.new("ScreenGui", game.CoreGui)
 cmdGui.Name = "GGCMD"
 
+-- Command bar
 local bar = Instance.new("Frame", cmdGui)
 bar.BackgroundColor3 = Color3.fromRGB(30,30,30)
-bar.Size = UDim2.new(1,0,0,30)
-bar.Position = UDim2.new(0,0,1,-30)
+bar.Size = UDim2.new(0.8, 0, 0, 30) -- hieman kapeampi
+bar.Position = UDim2.new(0.1, 0, 1, -30)
 bar.BorderSizePixel = 0
 bar.ClipsDescendants = true
 bar.Active = true
 bar.Draggable = true
 
+-- Komento tekstikenttä
 local cmdText = Instance.new("TextBox", bar)
-cmdText.Size = UDim2.new(1,0,1,0)
+cmdText.Size = UDim2.new(1, 0, 1, 0)
 cmdText.BackgroundTransparency = 1
 cmdText.TextColor3 = Color3.fromRGB(255,255,255)
 cmdText.TextXAlignment = Enum.TextXAlignment.Left
@@ -27,40 +29,43 @@ cmdText.PlaceholderText = "Enter command..."
 cmdText.ClearTextOnFocus = false
 cmdText.Text = ""
 
+-- Komentohistoria - oikealta vasemmalle liikkuva teksti
 local commandHistory = Instance.new("TextLabel", bar)
-commandHistory.Size = UDim2.new(2,0,1,0)
-commandHistory.Position = UDim2.new(1,0,0,0)
+commandHistory.Size = UDim2.new(2, 0, 1, 0)
+commandHistory.Position = UDim2.new(1, 0, 0, 0)
 commandHistory.BackgroundTransparency = 1
 commandHistory.TextColor3 = Color3.fromRGB(120,120,120)
 commandHistory.TextXAlignment = Enum.TextXAlignment.Right
 commandHistory.Font = Enum.Font.SourceSansItalic
 commandHistory.TextSize = 18
 commandHistory.Text = ""
+commandHistory.TextWrapped = false
+commandHistory.TextScaled = false
 
---// Historial liikkuu oikealta vasemmalle
+-- Liikkuva historia oikealta vasemmalle
 local function scrollHistory(text)
     commandHistory.Text = commandHistory.Text .. "   " .. text
     spawn(function()
         while true do
             for i=1, 400 do
-                commandHistory.Position = commandHistory.Position - UDim2.new(0.005,0,0,0)
+                commandHistory.Position = commandHistory.Position - UDim2.new(0.005, 0, 0, 0)
                 wait(0.01)
             end
-            commandHistory.Position = UDim2.new(1,0,0,0)
+            commandHistory.Position = UDim2.new(1, 0, 0, 0)
             commandHistory.Text = ""
         end
     end)
 end
 
---// Hallinta ja komennot
-local commands = {} -- komento-funktiot tallennetaan tähän
-local komennot = {} -- käytetään alias- ja suorituslogiikkaan
+--// Komentojen hallinta
+local commands = {} -- komento-funktiot
+local komennot = {} -- aliasit ja suoritus
 
 function addCommand(nimi, funktio)
     commands[nimi] = funktio
 end
 
---// Käytäntö: haetaan pelaaja
+--// Apufunktiot
 local function haePelaaja(nimi)
     for _, p in ipairs(game.Players:GetPlayers()) do
         if p.Name:lower():sub(1, #nimi) == nimi:lower() then
@@ -75,8 +80,7 @@ local function ilmoitus(txt)
     game:GetService("Debris"):AddItem(m, 3)
 end
 
---// Omistajat ja privilegiumtaso
-local omistajat = {"Google", "poika"}
+--// Privilege levelit
 local privilegeLevels = {}
 for _, n in ipairs(omistajat) do privilegeLevels[n] = 3 end
 
@@ -132,7 +136,7 @@ end)
 
 addCommand("torsofling", function(plr, args)
     local target = haePelaaja(args[2])
-    if target and target.Character then
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
         target.Character.HumanoidRootPart.Anchored = true
         wait(1)
         target.Character.HumanoidRootPart.Anchored = false
@@ -141,7 +145,7 @@ end)
 
 addCommand("untorsofling", function(plr, args)
     local target = haePelaaja(args[2])
-    if target and target.Character then
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
         target.Character.HumanoidRootPart.Anchored = false
     end
 end)
