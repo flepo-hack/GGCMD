@@ -1,4 +1,4 @@
---GGCMD made by Googlepoika 
+--{ GGCMD made by Googlepoika }--
 
 local cloneref = cloneref or function(a) return a end
 local coreGui = cloneref(game:GetService("CoreGui"))
