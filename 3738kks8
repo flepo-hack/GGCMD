@@ -29,7 +29,7 @@ local gethui = gethui or function()
 end
 
 local quirkycmd = Instance.new("ScreenGui", gethui())
-quirkycmd.Name = "quirkyCMD"
+quirkycmd.Name = "GGCMD"
 quirkycmd.IgnoreGuiInset = true
 quirkycmd.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 quirkycmd.ResetOnSpawn = false
@@ -176,7 +176,7 @@ local rStorage = game:GetService("ReplicatedStorage")
 local players = game:GetService("Players")
 local localPlayer = players.LocalPlayer
 
-local gui = quirkycmd or localPlayer:FindFirstChildOfClass("PlayerGui"):WaitForChild("quirkyCMD")
+local gui = quirkycmd or localPlayer:FindFirstChildOfClass("PlayerGui"):WaitForChild("Googlepoika")
 local gethui = gethui or function() return localPlayer:FindFirstChildOfClass("PlayerGui") end
 local box = gui:WaitForChild("cmdBox")
 local mobileButton = gui:WaitForChild("mobileOpen")
