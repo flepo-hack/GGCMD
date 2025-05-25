@@ -1,10 +1,4 @@
-local players = cloneref(game:GetService("Players"))
-local localPlayer = players.LocalPlayer
-
-if not localPlayer then
-    warn("LocalPlayer is nil! Tämä skripti toimii vain client-ympäristössä.")
-    return
-end
+--{ GGCMD by Googlepoika}--
 
 local cloneref = cloneref or function(a) return a end
 local coreGui = cloneref(game:GetService("CoreGui"))
