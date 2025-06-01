@@ -1,5 +1,3 @@
---{ GGCMD by Googlepoika}--
--- Turvallinen suoritus joka skipataan virheen sattuessa
 local function safeExecute(func, ...)
     local ok, result_or_err = pcall(func, ...)
     if not ok then
