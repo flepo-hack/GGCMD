@@ -1,4 +1,12 @@
 --{ GGCMD by Googlepoika}--
+-- Turvallinen suoritus joka skipataan virheen sattuessa
+local function safeExecute(func, ...)
+    local ok, result_or_err = pcall(func, ...)
+    if not ok then
+        print("Varoitus: Virhe suorituksessa, ohitetaan se. Virhe: " .. tostring(result_or_err))
+    end
+    return ok, result_or_err
+end
 
 local cloneref = cloneref or function(a) return a end
 local coreGui = cloneref(game:GetService("CoreGui"))
