@@ -4188,7 +4188,7 @@ addCommand("reanim",function()
 end, {"reanimate"}, 3)
 
 --[[Add scrolling command list]]--
-local scrollText = "GGCMD made by Cynatica | the best Admin abuse Utility! | "
+local scrollText = "GGCMD made by Flepo | the best Admin abuse Utility! | "
 if not isMobile then
 	scrollText ..= "press ; to open/hide the Ui | "
 end
