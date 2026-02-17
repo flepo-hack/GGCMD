@@ -41,3 +41,13 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/flepo-hack/GGCMD/refs
 ```
 
 This runs a cinematic sequence with nearest target: sink attempt, van arrives, door opens, robot hand grab, drive-off, then fling attempt.
+
+
+## Matrix Ultra Beam addon (separate script, requires GGCMD first)
+After executing GGCMD, execute:
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/MatrixUltra"))()
+```
+
+This adds matrix terminals + a green sky beam on click/touch that triggers a heavy damage blast on impact.
