@@ -1,0 +1,164 @@
+-- Clown Van cinematic addon (separate script)
+-- Intended for controlled/admin gameplay only.
+-- If GGCMD is present, this script can trigger ;sink and ;fling through chat commands.
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local TextChatService = game:GetService("TextChatService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local localPlayer = Players.LocalPlayer
+if not localPlayer then return end
+
+local PREFIX = ";"
+
+local function sendCmd(raw)
+	local msg = PREFIX .. raw
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		local channel = TextChatService.TextChannels and TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+		if channel then
+			pcall(function()
+				channel:SendAsync(msg)
+			end)
+			return
+		end
+	end
+
+	local legacy = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+	local say = legacy and legacy:FindFirstChild("SayMessageRequest")
+	if say then
+		pcall(function()
+			say:FireServer(msg, "All")
+		end)
+	end
+end
+
+local function nearestTarget(maxDistance)
+	local char = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	local myRoot = char:FindFirstChild("HumanoidRootPart")
+	if not myRoot then return nil end
+
+	local nearest, nearestDist
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= localPlayer then
+			local tChar = plr.Character
+			local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
+			local tHum = tChar and tChar:FindFirstChildOfClass("Humanoid")
+			if tRoot and tHum and tHum.Health > 0 then
+				local d = (tRoot.Position - myRoot.Position).Magnitude
+				if d <= maxDistance and (not nearestDist or d < nearestDist) then
+					nearest = plr
+					nearestDist = d
+				end
+			end
+		end
+	end
+	return nearest
+end
+
+local function makePart(parent, size, color, anchored)
+	local p = Instance.new("Part")
+	p.Size = size
+	p.Color = color
+	p.Anchored = anchored
+	p.CanCollide = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = parent
+	return p
+end
+
+local function buildVan(spawnCFrame)
+	local model = Instance.new("Model")
+	model.Name = "ClownVan"
+	model.Parent = workspace
+
+	local body = makePart(model, Vector3.new(8, 4, 14), Color3.fromRGB(255, 240, 120), true)
+	body.CFrame = spawnCFrame
+	body.Name = "Body"
+
+	local door = makePart(model, Vector3.new(0.6, 3.6, 4), Color3.fromRGB(220, 60, 60), true)
+	door.Name = "Door"
+	door.CFrame = body.CFrame * CFrame.new(4.25, 0, 0)
+
+	for i = -1, 1 do
+		local stripe = makePart(model, Vector3.new(8.1, 0.2, 0.4), Color3.fromRGB(50, 120, 255), true)
+		stripe.CFrame = body.CFrame * CFrame.new(0, i * 1.2, -5 + i)
+	end
+
+	local clownHead = makePart(model, Vector3.new(1.8, 1.8, 1.8), Color3.fromRGB(255, 220, 180), true)
+	clownHead.Shape = Enum.PartType.Ball
+	clownHead.Name = "ClownHead"
+	clownHead.CFrame = body.CFrame * CFrame.new(-2.5, 0.5, 0)
+
+	local nose = makePart(model, Vector3.new(0.4, 0.4, 0.4), Color3.fromRGB(255, 0, 0), true)
+	nose.Shape = Enum.PartType.Ball
+	nose.CFrame = clownHead.CFrame * CFrame.new(0, 0, -0.95)
+
+	local arm = makePart(model, Vector3.new(0.8, 0.8, 0.8), Color3.fromRGB(180, 180, 180), true)
+	arm.Shape = Enum.PartType.Ball
+	arm.Name = "RoboHand"
+	arm.CFrame = body.CFrame * CFrame.new(3.6, 0.8, 0)
+
+	model.PrimaryPart = body
+	return model
+end
+
+local function runSequence()
+	local myChar = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+	if not myRoot then return end
+
+	local target = nearestTarget(35)
+	if not target then return end
+	local tChar = target.Character
+	local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
+	if not tRoot then return end
+
+	-- Try FE command flow through GGCMD if available.
+	sendCmd("sink " .. target.Name)
+
+	local van = buildVan(tRoot.CFrame * CFrame.new(-25, 0, 0))
+	Debris:AddItem(van, 14)
+
+	local body = van:FindFirstChild("Body")
+	local door = van:FindFirstChild("Door")
+	local hand = van:FindFirstChild("RoboHand")
+	if not (body and door and hand) then return end
+
+	TweenService:Create(body, TweenInfo.new(1.2, Enum.EasingStyle.Quad), {
+		CFrame = tRoot.CFrame * CFrame.new(-6, 0, 0)
+	}):Play()
+	task.wait(1.25)
+
+	TweenService:Create(door, TweenInfo.new(0.5, Enum.EasingStyle.Sine), {
+		CFrame = door.CFrame * CFrame.Angles(0, math.rad(80), 0)
+	}):Play()
+	task.wait(0.45)
+
+	local grabTween = TweenService:Create(hand, TweenInfo.new(0.45, Enum.EasingStyle.Back), {
+		CFrame = tRoot.CFrame * CFrame.new(0, 0.2, 0)
+	})
+	grabTween:Play()
+	grabTween.Completed:Wait()
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = hand
+	weld.Part1 = tRoot
+	weld.Parent = hand
+
+	task.wait(0.4)
+	TweenService:Create(body, TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		CFrame = body.CFrame * CFrame.new(0, 0, -45)
+	}):Play()
+	task.wait(0.7)
+
+	pcall(function()
+		weld:Destroy()
+	end)
+	tRoot.AssemblyLinearVelocity = Vector3.new(0, 100, -220)
+	sendCmd("fling " .. target.Name)
+end
+
+runSequence()
