@@ -1,0 +1,36 @@
+-- StarBat + FlyPose Addon for GGCMD
+-- Execute only after GGCMD has already been executed.
+
+local Players = game:GetService("Players")
+local Debris = game:GetService("Debris")
+local TextChatService = game:GetService("TextChatService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local localPlayer = Players.LocalPlayer
+local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
+local ggcmdGui = playerGui and playerGui:FindFirstChild("GGCMD")
+local genv = (getgenv and getgenv()) or _G
+
+if not ggcmdGui then
+	warn("[StarBat Addon] GGCMD not found. Execute GGCMD first.")
+	return
+end
+
+if not genv.foundRemote then
+	warn("[StarBat Addon] GGCMD remote missing (getgenv().foundRemote). Execute GGCMD first.")
+	return
+end
+
+local PREFIX = ";"
+local TAG = "GGCMD_STARBAT_ADDON"
+
+local state = {
+	tools = {},
+	effects = {},
+	armPoseCon = nil,
+	flyFxEnabled = false,
+	flyFx = {}
+}
+
+local function notify(title, text, duration)
