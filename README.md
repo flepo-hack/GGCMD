@@ -25,7 +25,7 @@ It auto-enables freezer look and gives two tools: **Ice Slide** and **Eat**.
 After executing GGCMD, execute:
 
 ```lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/bat"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/Bat"))()
 ```
 
 This gives 2 tools:
