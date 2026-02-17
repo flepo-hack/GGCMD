@@ -1,0 +1,365 @@
+-- Matrix Ultra Beam addon (separate script, requires GGCMD first)
+-- Keeps original asset IDs intact while improving stability and cleanup.
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local InsertService = game:GetService("InsertService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+local Lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+if not player then
+	return
+end
+
+local camera = workspace.CurrentCamera
+local mouse = player:GetMouse()
+
+local char, hum, root
+local terminals = {}
+local updateConn, inputConn
+local bodyColors, rootGlow, bloomEffect
+local leanTick = 0
+
+local matrixChars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ./\\|#$%&*+-=()[]{}<>?!"
+
+local function pickChar()
+	local idx = math.random(1, #matrixChars)
+	return matrixChars:sub(idx, idx)
+end
+
+local function destroyTerminals()
+	for _, t in ipairs(terminals) do
+		if t.part then
+			t.part:Destroy()
+		end
+	end
+	table.clear(terminals)
+end
+
+local function cleanup()
+	if inputConn then
+		inputConn:Disconnect()
+		inputConn = nil
+	end
+	if updateConn then
+		updateConn:Disconnect()
+		updateConn = nil
+	end
+	if bodyColors then
+		bodyColors:Destroy()
+		bodyColors = nil
+	end
+	if rootGlow then
+		rootGlow:Destroy()
+		rootGlow = nil
+	end
+	if bloomEffect then
+		bloomEffect:Destroy()
+		bloomEffect = nil
+	end
+	destroyTerminals()
+end
+
+local function damageAt(position, radius, amount)
+	local seen = {}
+	for _, part in ipairs(workspace:GetPartBoundsInRadius(position, radius)) do
+		local model = part:FindFirstAncestorOfClass("Model")
+		if model and not seen[model] then
+			seen[model] = true
+			local targetHum = model:FindFirstChildOfClass("Humanoid")
+			if targetHum and targetHum ~= hum and targetHum.Health > 0 then
+				targetHum:TakeDamage(amount)
+			end
+		end
+	end
+end
+
+local function castBeam(targetPos)
+	local startPos = targetPos + Vector3.new(0, 250, 0)
+
+	local startPart = Instance.new("Part")
+	startPart.Name = "MatrixBeamStart"
+	startPart.Anchored = true
+	startPart.CanCollide = false
+	startPart.Transparency = 1
+	startPart.Size = Vector3.new(3, 3, 3)
+	startPart.CFrame = CFrame.new(startPos)
+	startPart.Parent = workspace
+
+	local endPart = Instance.new("Part")
+	endPart.Name = "MatrixBeamImpact"
+	endPart.Anchored = true
+	endPart.CanCollide = false
+	endPart.Shape = Enum.PartType.Ball
+	endPart.Material = Enum.Material.Neon
+	endPart.Color = Color3.new(0, 1, 0)
+	endPart.Transparency = 0.35
+	endPart.Size = Vector3.new(8, 8, 8)
+	endPart.CFrame = CFrame.new(targetPos)
+	endPart.Parent = workspace
+
+	local att0 = Instance.new("Attachment")
+	att0.Parent = startPart
+	local att1 = Instance.new("Attachment")
+	att1.Parent = endPart
+
+	local beam = Instance.new("Beam")
+	beam.Attachment0 = att0
+	beam.Attachment1 = att1
+	beam.Color = ColorSequence.new(Color3.new(0, 1, 0))
+	beam.Texture = "rbxassetid://499487295"
+	beam.TextureLength = 1.5
+	beam.TextureSpeed = -20
+	beam.Width0 = 5
+	beam.Width1 = 10
+	beam.LightEmission = 1
+	beam.FaceCamera = true
+	beam.Segments = 30
+	beam.CurveSize0 = -0.5
+	beam.CurveSize1 = 0.5
+	beam.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(1, 0.1),
+	})
+	beam.Parent = workspace
+
+	TweenService:Create(beam, TweenInfo.new(0.5), { Width0 = 12, Width1 = 18 }):Play()
+	TweenService:Create(endPart, TweenInfo.new(0.6), {
+		Size = Vector3.new(20, 20, 20),
+		Transparency = 1,
+	}):Play()
+
+	local spark = Instance.new("ParticleEmitter")
+	spark.Texture = "rbxassetid://241650934"
+	spark.Color = ColorSequence.new(Color3.new(0, 1, 0))
+	spark.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(1, 2),
+	})
+	spark.Lifetime = NumberRange.new(0.4, 0.8)
+	spark.Rate = 800
+	spark.SpreadAngle = Vector2.new(60, 60)
+	spark.Speed = NumberRange.new(25, 50)
+	spark.Parent = endPart
+	spark:Emit(220)
+
+	local fire = Instance.new("ParticleEmitter")
+	fire.Texture = "rbxassetid://292373707"
+	fire.Color = ColorSequence.new(Color3.new(0, 1, 1))
+	fire.Size = NumberSequence.new(1.5)
+	fire.Lifetime = NumberRange.new(0.6)
+	fire.Rate = 400
+	fire.Speed = NumberRange.new(10)
+	fire.Parent = endPart
+	fire:Emit(150)
+
+	task.spawn(function()
+		task.wait(0.18)
+		damageAt(targetPos, 16, 70)
+		task.wait(0.12)
+		damageAt(targetPos, 22, 120)
+
+		local expl = Instance.new("Explosion")
+		expl.Position = targetPos
+		expl.BlastRadius = 60
+		expl.BlastPressure = 0
+		expl.Parent = workspace
+
+		if camera then
+			local c0 = camera.CFrame
+			TweenService:Create(camera, TweenInfo.new(0.12), {
+				CFrame = c0 * CFrame.new(math.random(-2, 2), math.random(-2, 2), 0),
+			}):Play()
+			task.wait(0.12)
+			camera.CFrame = c0
+		end
+	end)
+
+	Debris:AddItem(startPart, 1.2)
+	Debris:AddItem(endPart, 1.2)
+	Debris:AddItem(beam, 1.2)
+end
+
+local function buildTerminals()
+	bloomEffect = Instance.new("BloomEffect")
+	bloomEffect.Name = "MatrixUltraBloom"
+	bloomEffect.Intensity = 1
+	bloomEffect.Size = 24
+	bloomEffect.Threshold = 1
+	bloomEffect.Parent = Lighting
+
+	for i = 1, 3 do
+		local part = Instance.new("Part")
+		part.Name = "UltraMatrix_" .. i
+		part.Anchored = true
+		part.CanCollide = false
+		part.Size = Vector3.new(5, 7, 0.1)
+		part.Material = Enum.Material.ForceField
+		part.Color = Color3.new(0, 1, 0)
+		part.Transparency = 0.2
+		part.Parent = workspace
+
+		local light = Instance.new("PointLight")
+		light.Color = Color3.new(0, 1, 0)
+		light.Brightness = 5
+		light.Range = 25
+		light.Parent = part
+
+		local sg = Instance.new("SurfaceGui")
+		sg.Face = Enum.NormalId.Front
+		sg.LightInfluence = 0
+		sg.AlwaysOnTop = true
+		sg.Parent = part
+
+		local sf = Instance.new("ScrollingFrame")
+		sf.Size = UDim2.fromScale(1, 1)
+		sf.BackgroundTransparency = 1
+		sf.ScrollBarThickness = 0
+		sf.CanvasSize = UDim2.new(0, 0, 0, 1500)
+		sf.Parent = sg
+
+		local cols = 20
+		local tls = {}
+		for col = 1, cols do
+			for row = 1, 75 do
+				local tl = Instance.new("TextLabel")
+				tl.Size = UDim2.new(1 / cols, 0, 0, 20)
+				tl.Position = UDim2.new((col - 1) / cols, 0, (row - 1) / 75, 0)
+				tl.BackgroundTransparency = 1
+				tl.Text = ""
+				tl.TextColor3 = Color3.new(0, 1, 0)
+				tl.TextScaled = false
+				tl.TextSize = 18
+				tl.Font = Enum.Font.Code
+				tl.TextXAlignment = Enum.TextXAlignment.Center
+				tl.Parent = sf
+				table.insert(tls, {
+					tl = tl,
+					col = col,
+					drop = math.random(0, 1500),
+					tail = 0,
+				})
+			end
+		end
+
+		table.insert(terminals, {
+			part = part,
+			tls = tls,
+			offset = Vector3.new((i - 2) * 5.5, math.sin(i * 2) * 1.5, -12),
+		})
+	end
+end
+
+local function setupChar(newChar)
+	cleanup()
+
+	char = newChar
+	hum = char:WaitForChild("Humanoid")
+	root = char:WaitForChild("HumanoidRootPart")
+
+	for _, v in ipairs(char:GetChildren()) do
+		if v:IsA("Shirt") or v:IsA("Pants") then
+			v:Destroy()
+		end
+	end
+
+	local shirt = Instance.new("Shirt")
+	shirt.ShirtTemplate = "rbxassetid://14238839317"
+	shirt.Parent = char
+
+	local pants = Instance.new("Pants")
+	pants.PantsTemplate = "rbxassetid://7150805858"
+	pants.Parent = char
+
+	bodyColors = Instance.new("BodyColors")
+	bodyColors.HeadColor3 = Color3.fromRGB(10, 25, 10)
+	bodyColors.TorsoColor3 = Color3.new(0, 0, 0)
+	bodyColors.LeftArmColor3 = Color3.fromRGB(10, 25, 10)
+	bodyColors.RightArmColor3 = Color3.fromRGB(10, 25, 10)
+	bodyColors.LeftLegColor3 = Color3.new(0, 0, 0)
+	bodyColors.RightLegColor3 = Color3.new(0, 0, 0)
+	bodyColors.Parent = char
+
+	task.spawn(function()
+		local ok, asset = pcall(InsertService.LoadAsset, InsertService, 13940715968)
+		if ok and asset then
+			local acc = asset:FindFirstChildOfClass("Accessory")
+			if acc and char and char.Parent then
+				acc.Parent = char
+			end
+			asset:Destroy()
+		end
+	end)
+
+	local anim = Instance.new("Animation")
+	anim.AnimationId = "rbxassetid://80575946555684"
+	local track = hum:LoadAnimation(anim)
+	track.Looped = true
+	track.Priority = Enum.AnimationPriority.Idle
+	track:Play()
+
+	rootGlow = Instance.new("PointLight")
+	rootGlow.Color = Color3.new(0, 1, 0)
+	rootGlow.Brightness = 2
+	rootGlow.Range = 20
+	rootGlow.Parent = root
+
+	buildTerminals()
+
+	updateConn = RunService.Heartbeat:Connect(function(dt)
+		if not (root and hum and root.Parent) then
+			return
+		end
+
+		leanTick += dt * 3
+		local moveMag = hum.MoveDirection.Magnitude
+		local tilt = moveMag > 0 and math.rad(-20 + math.sin(leanTick) * 2) or math.rad(-15 + math.sin(leanTick))
+		root.CFrame = root.CFrame * CFrame.Angles(tilt * dt * 2, math.sin(leanTick * 0.5) * 0.002, 0)
+
+		local cf = root.CFrame
+		for i, term in ipairs(terminals) do
+			local posCf = cf * CFrame.new(term.offset)
+			term.part.CFrame = CFrame.lookAt(posCf.Position, cf.Position) * CFrame.Angles(0, math.rad(tick() * i * 8), 0)
+
+			for _, data in ipairs(term.tls) do
+				local speed = (tick() * 40 + data.col * 10) % 1500
+				data.drop = (data.drop + dt * 50) % 1500
+				local dist = math.abs(speed - data.drop)
+				data.tail = math.max(0, data.tail - dt * 5)
+				if dist < 50 then
+					data.tail = 1
+					data.tl.TextTransparency = 1 - (dist / 50)
+					data.tl.Text = pickChar()
+				else
+					data.tl.TextTransparency = 1 - data.tail * 0.3
+					data.tl.Text = ""
+				end
+			end
+		end
+	end)
+
+	inputConn = UserInputService.InputBegan:Connect(function(input, gpe)
+		if gpe then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			castBeam(mouse.Hit.Position)
+		end
+	end)
+
+	char.AncestryChanged:Connect(function(_, parent)
+		if not parent then
+			cleanup()
+		end
+	end)
+end
+
+if player.Character then
+	setupChar(player.Character)
+end
+player.CharacterAdded:Connect(setupChar)
+
+print("🔥 Ready")
