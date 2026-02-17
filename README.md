@@ -19,3 +19,15 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/flepo-hack/GGCMD/refs
 ```
 
 It auto-enables freezer look and gives two tools: **Ice Slide** and **Eat**.
+
+
+## StarBat addon (separate script, requires GGCMD first)
+After executing GGCMD, execute:
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/starbat_addon.lua"))()
+```
+
+This gives 2 tools:
+- **Star Fly**: triggers GGCMD fly + back-arm white smoke/glitter effect
+- **Star Bat**: star bat hit with knockback + flashbang effect (+ `;fling` support)
