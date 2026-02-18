@@ -1,0 +1,331 @@
+-- GGCMD Delta Hub UI
+-- Opens from a compact dot button into a smooth executor + script list panel
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local localPlayer = Players.LocalPlayer
+local playerGui = localPlayer:WaitForChild("PlayerGui")
+
+if playerGui:FindFirstChild("GGCMDDeltaHub") then
+	playerGui.GGCMDDeltaHub:Destroy()
+end
+
+local scripts = {
+	{
+		name = "GGCMD Main",
+		url = "https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/5j86",
+		desc = "Full FE admin command script"
+	},
+	{
+		name = "Freezer Addon",
+		url = "https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/Experimental",
+		desc = "Ice tools + freezer look"
+	},
+	{
+		name = "StarBat Addon",
+		url = "https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/Bat",
+		desc = "Star fly + star bat effects"
+	},
+	{
+		name = "Clown Van Addon",
+		url = "https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/Van",
+		desc = "Cinematic van fling sequence"
+	},
+	{
+		name = "Matrix Ultra Addon",
+		url = "https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/MatrixUltra",
+		desc = "Matrix terminals + beam blast"
+	},
+	{
+		name = "Black Figure Addon",
+		url = "https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/...",
+		desc = "Black figure addon placeholder"
+	}
+}
+
+local function makeCorner(obj, radius)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, radius)
+	c.Parent = obj
+	return c
+end
+
+local function makeStroke(obj, color, transparency)
+	local s = Instance.new("UIStroke")
+	s.Color = color
+	s.Transparency = transparency or 0
+	s.Thickness = 1
+	s.Parent = obj
+	return s
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "GGCMDDeltaHub"
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+local openDot = Instance.new("TextButton")
+openDot.Name = "OpenDot"
+openDot.Parent = gui
+openDot.AnchorPoint = Vector2.new(0.5, 0.5)
+openDot.Position = UDim2.fromScale(0.5, 0.5)
+openDot.Size = UDim2.fromOffset(36, 36)
+openDot.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+openDot.Text = "X"
+openDot.Font = Enum.Font.GothamBold
+openDot.TextSize = 18
+openDot.TextColor3 = Color3.fromRGB(225, 225, 225)
+openDot.AutoButtonColor = false
+makeCorner(openDot, 999)
+makeStroke(openDot, Color3.fromRGB(120, 120, 120), 0.45)
+
+local panel = Instance.new("Frame")
+panel.Name = "Panel"
+panel.Parent = gui
+panel.AnchorPoint = Vector2.new(0.5, 0.5)
+panel.Position = openDot.Position
+panel.Size = UDim2.fromOffset(36, 36)
+panel.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
+panel.ClipsDescendants = true
+panel.Visible = false
+makeCorner(panel, 16)
+makeStroke(panel, Color3.fromRGB(145, 145, 145), 0.6)
+
+local header = Instance.new("TextLabel")
+header.Parent = panel
+header.BackgroundTransparency = 1
+header.Size = UDim2.new(1, -14, 0, 38)
+header.Position = UDim2.fromOffset(10, 0)
+header.Font = Enum.Font.GothamBold
+header.TextXAlignment = Enum.TextXAlignment.Left
+header.Text = "GGCMD Delta Hub"
+header.TextColor3 = Color3.fromRGB(235, 235, 235)
+header.TextSize = 15
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Parent = panel
+closeBtn.Size = UDim2.fromOffset(28, 28)
+closeBtn.Position = UDim2.new(1, -34, 0, 5)
+closeBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+closeBtn.TextSize = 14
+closeBtn.AutoButtonColor = false
+makeCorner(closeBtn, 10)
+makeStroke(closeBtn, Color3.fromRGB(140, 140, 140), 0.5)
+
+local body = Instance.new("Frame")
+body.Parent = panel
+body.BackgroundTransparency = 1
+body.Position = UDim2.fromOffset(8, 42)
+body.Size = UDim2.new(1, -16, 1, -50)
+
+local executorFrame = Instance.new("Frame")
+executorFrame.Parent = body
+executorFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+executorFrame.Size = UDim2.new(0.58, -4, 1, 0)
+makeCorner(executorFrame, 12)
+makeStroke(executorFrame, Color3.fromRGB(110, 110, 110), 0.55)
+
+local scriptsFrame = Instance.new("Frame")
+scriptsFrame.Parent = body
+scriptsFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+scriptsFrame.Position = UDim2.new(0.58, 6, 0, 0)
+scriptsFrame.Size = UDim2.new(0.42, -2, 1, 0)
+makeCorner(scriptsFrame, 12)
+makeStroke(scriptsFrame, Color3.fromRGB(110, 110, 110), 0.55)
+
+local editor = Instance.new("TextBox")
+editor.Parent = executorFrame
+editor.BackgroundColor3 = Color3.fromRGB(14, 14, 14)
+editor.Position = UDim2.fromOffset(8, 8)
+editor.Size = UDim2.new(1, -16, 1, -56)
+editor.MultiLine = true
+editor.ClearTextOnFocus = false
+editor.TextXAlignment = Enum.TextXAlignment.Left
+editor.TextYAlignment = Enum.TextYAlignment.Top
+editor.TextWrapped = false
+editor.Font = Enum.Font.Code
+editor.TextSize = 14
+editor.TextColor3 = Color3.fromRGB(205, 205, 205)
+editor.PlaceholderText = "-- Paina scriptinappia oikealta tai kirjoita oma koodi\nprint('GGCMD Delta Hub')"
+editor.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+editor.Text = ""
+makeCorner(editor, 10)
+
+local executeBtn = Instance.new("TextButton")
+executeBtn.Parent = executorFrame
+executeBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+executeBtn.Position = UDim2.new(0, 8, 1, -40)
+executeBtn.Size = UDim2.new(1, -16, 0, 30)
+executeBtn.Text = "Execute (Delta)"
+executeBtn.Font = Enum.Font.GothamBold
+executeBtn.TextSize = 13
+executeBtn.TextColor3 = Color3.fromRGB(230, 230, 230)
+executeBtn.AutoButtonColor = false
+makeCorner(executeBtn, 10)
+makeStroke(executeBtn, Color3.fromRGB(125, 125, 125), 0.45)
+
+local listTitle = Instance.new("TextLabel")
+listTitle.Parent = scriptsFrame
+listTitle.BackgroundTransparency = 1
+listTitle.Position = UDim2.fromOffset(8, 6)
+listTitle.Size = UDim2.new(1, -16, 0, 24)
+listTitle.Font = Enum.Font.GothamBold
+listTitle.TextSize = 13
+listTitle.TextXAlignment = Enum.TextXAlignment.Left
+listTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
+listTitle.Text = "GGCMD GitHub Scripts"
+
+local scriptList = Instance.new("ScrollingFrame")
+scriptList.Parent = scriptsFrame
+scriptList.BackgroundTransparency = 1
+scriptList.Position = UDim2.fromOffset(6, 30)
+scriptList.Size = UDim2.new(1, -12, 1, -36)
+scriptList.CanvasSize = UDim2.new(0, 0, 0, 0)
+scriptList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scriptList.ScrollBarThickness = 4
+scriptList.ScrollBarImageColor3 = Color3.fromRGB(130, 130, 130)
+
+local layout = Instance.new("UIListLayout")
+layout.Parent = scriptList
+layout.Padding = UDim.new(0, 6)
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+for i, item in ipairs(scripts) do
+	local btn = Instance.new("TextButton")
+	btn.Name = item.name:gsub("%s+", "")
+	btn.Parent = scriptList
+	btn.Size = UDim2.new(1, -2, 0, 54)
+	btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	btn.AutoButtonColor = false
+	btn.Text = string.format("%s\n%s", item.name, item.desc)
+	btn.TextWrapped = true
+	btn.Font = Enum.Font.GothamSemibold
+	btn.TextSize = 12
+	btn.TextColor3 = Color3.fromRGB(218, 218, 218)
+	btn.LayoutOrder = i
+	makeCorner(btn, 10)
+	makeStroke(btn, Color3.fromRGB(145, 145, 145), 0.55)
+
+	btn.MouseButton1Click:Connect(function()
+		editor.Text = string.format('loadstring(game:HttpGet("%s"))()', item.url)
+	end)
+end
+
+local function flash(btn)
+	local tintIn = TweenService:Create(btn, TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(36, 36, 36)})
+	local tintOut = TweenService:Create(btn, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(20, 20, 20)})
+	tintIn:Play()
+	tintIn.Completed:Wait()
+	tintOut:Play()
+end
+
+executeBtn.MouseButton1Click:Connect(function()
+	flash(executeBtn)
+	local source = editor.Text
+	if source == "" then
+		return
+	end
+
+	local fn, err = loadstring(source)
+	if not fn then
+		editor.Text = "-- Compile error:\n" .. tostring(err)
+		return
+	end
+
+	task.spawn(function()
+		local ok, runtimeErr = pcall(fn)
+		if not ok then
+			editor.Text = "-- Runtime error:\n" .. tostring(runtimeErr)
+		end
+	end)
+end)
+
+local isOpen = false
+local closedSize = UDim2.fromOffset(36, 36)
+local openSize = UDim2.fromOffset(760, 430)
+
+local function openPanel()
+	if isOpen then return end
+	isOpen = true
+	panel.Visible = true
+	openDot.Visible = false
+	panel.Size = closedSize
+	panel.Position = openDot.Position
+
+	TweenService:Create(panel, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		Size = openSize,
+		Position = UDim2.fromScale(0.5, 0.5)
+	}):Play()
+end
+
+local function closePanel()
+	if not isOpen then return end
+	isOpen = false
+	local tween = TweenService:Create(panel, TweenInfo.new(0.24, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+		Size = closedSize,
+		Position = openDot.Position
+	})
+	tween:Play()
+	tween.Completed:Wait()
+	panel.Visible = false
+	openDot.Visible = true
+end
+
+openDot.MouseButton1Click:Connect(openPanel)
+closeBtn.MouseButton1Click:Connect(closePanel)
+
+-- Drag functionality for dot and panel
+local dragging = false
+local dragInput, dragStart, startPos
+local dragTarget = openDot
+
+local function beginDrag(input, target)
+	dragging = true
+	dragInput = input
+	dragStart = input.Position
+	startPos = target.Position
+	dragTarget = target
+
+	input.Changed:Connect(function()
+		if input.UserInputState == Enum.UserInputState.End then
+			dragging = false
+		end
+	end)
+end
+
+openDot.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		beginDrag(input, openDot)
+	end
+end)
+
+panel.InputBegan:Connect(function(input)
+	if isOpen and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+		if input.Position.Y <= (panel.AbsolutePosition.Y + 40) then
+			beginDrag(input, panel)
+		end
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		if dragging and input == dragInput then
+			local delta = input.Position - dragStart
+			dragTarget.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			if dragTarget == openDot then
+				panel.Position = dragTarget.Position
+			else
+				openDot.Position = dragTarget.Position
+			end
+		end
+	end
+end)
+
+openPanel()
