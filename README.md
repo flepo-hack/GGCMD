@@ -51,3 +51,10 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/flepo-hack/GGCMD/refs
 ```
 
 This adds matrix terminals + a green sky beam on click/touch that triggers a heavy damage blast on impact.
+
+##Black figure(separate script, requires GGCMD first)
+After executing GGCMD, execute:
+
+```lua
+lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/..."))()
