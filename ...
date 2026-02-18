@@ -397,4 +397,55 @@ game:GetService("RunService").Heartbeat:Connect(function()
 	local Moving=(hrp.Velocity*v3(1,0,1)).Magnitude>1
 	local VerY=hrp.Velocity.Y
 	local Stand=Raycast(hrp.CFrame*cf(0,-t.Size.Y/2,0).Position,-hrp.CFrame.UpVector,{char},3,true)
-	hum.WalkSpeed
+	hum.WalkSpeed,hum.JumpPower=WS,JP
+	if not Moving and Stand and not Using then
+		Change=1
+		nec.C0=nec.C0:Lerp(necC0*cf(0,0,0)*cf(sin(Sine/60)*cos(Sine/60)*5,sin(Sine/225)*cos(Sine/225)*25,sin(Sine/130)*cos(Sine/130)*15,true)*cf(0,0,0)*cf(-40,0,35,true),.2)
+		rutj.C0=rutj.C0:Lerp(rutjC0*cf(0,.15 * sin(Sine/25) * cos(Sine/27.5) * (1 * (.1 * tan(Sine/100))),0)*cf(0,0,0,true)*cf(0,-.05,-.5)*cf(-10,0,0,true),.2)
+		rs.C0=rs.C0:Lerp(rsC0*cf(0,.1 * cos(Sine/27.5),0)*cf(sin(Sine/200)*cos(Sine/200)*10,cos(Sine/27.5)*3.5,sin(Sine/150)*cos(Sine/150)*-5,true)*cf(-.35,-.8,-.15)*cf(10,30,-20,true),.2)
+		ls.C0=ls.C0:Lerp(lsC0*cf(0,.1 * cos(Sine/27.5),0)*cf(sin(Sine/200)*cos(Sine/200)*10,cos(Sine/27.5)*-3.5,sin(Sine/150)*cos(Sine/150)*5,true)*cf(.1,-.1,-.2)*cf(20,-20,7.5,true),.2)
+		rh.C0=rh.C0:Lerp(rhC0*cf(0,-.15 * sin(Sine/25) * cos(Sine/27.5) * (1 * (.1 * tan(Sine/100))),0)*cf(0,0,0,true)*cf(0,0,-.2)*cf(15,-5,5,true),.2)
+		lh.C0=lh.C0:Lerp(lhC0*cf(0,-.15 * sin(Sine/25) * cos(Sine/27.5) * (1 * (.1 * tan(Sine/100))),0)*cf(0,0,0,true)*cf(0,0,-.1)*cf(6.5,5,-5,true),.2)
+	elseif Moving and Stand then
+		Change=1
+		nec.C0=nec.C0:Lerp(necC0*cf(0,0,0)*cf(sin(Sine/5)*2,-sin(Sine/10)*4,0,true)*angles(MoveZ/15,-MoveX/2,0)*cf(0,0,0)*cf(0,0,0,true),.2)
+		rutj.C0=rutj.C0:Lerp(rutjC0*cf(0,.1*cos(Sine/5),0)*cf(sin(Sine/5)*2,sin(Sine/10)*4,0,true)*angles(-MoveZ/10,0,-MoveX/11)*cf(0,0,0)*cf(0,0,0,true),.2)
+		rs.C0=rs.C0:Lerp(rsC0*cf(0,0,0)*cf(sin(Sine/5)*4,-sin(Sine/10)*5,cos(Sine/10)*10,true)*cf(-.2,-.5,-.25)*cf(105,25,-10,true)*angles(0,0,MoveX/2),.2)
+		ls.C0=ls.C0:Lerp(lsC0*cf(0,0,0)*cf(sin(Sine/6)*6,sin(Sine/11)*5,cos(Sine/11)*10,true)*cf(.3,-1,.65)*cf(80,-50,20,true)*angles(0,0,MoveX/2),.2)
+		rh.C0=rh.C0:Lerp(rhC0*cf(0,-.2*cos(Sine/10),-.25+.3*cos(Sine/10))*cf(-10+sin(Sine/10)*-25*MoveZ,cos(Sine/10)*2.5,sin(Sine/10)*-20*MoveX,true)*cf(0,0,0)*cf(0,0,0,true),.2)
+		lh.C0=lh.C0:Lerp(lhC0*cf(0,.2*cos(Sine/10),-.25+-.3*cos(Sine/10))*cf(-10+sin(Sine/10)*25*MoveZ,cos(Sine/10)*2.5,-sin(Sine/10)*-20*MoveX,true)*cf(0,0,0)*cf(0,0,0,true),.2)
+	elseif VerY>5 and not Stand then
+		Change=1
+		nec.C0=nec.C0:Lerp(necC0*cf(0,0,0)*cf(0,0,0,true)*angles(0,-MoveX/2,0)*cf(0,0,0)*cf(-20,0,20,true),.2)
+		rutj.C0=rutj.C0:Lerp(rutjC0*cf(0,0,0)*cf(0,0,0,true)*angles(-MoveZ/5,0,-MoveX/5)*cf(0,0,0)*cf(-12.5,0,0,true),.2)
+		rs.C0=rs.C0:Lerp(rsC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,.35,-.2)*cf(120,30,10,true),.2)
+		ls.C0=ls.C0:Lerp(lsC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,0,0)*cf(30,-20,-10,true),.2)
+		rh.C0=rh.C0:Lerp(rhC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,.65,-.4)*cf(30,-7,5,true),.2)
+		lh.C0=lh.C0:Lerp(lhC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,.7,-.5)*cf(-20,5,-3,true),.2)
+	elseif VerY<-5 and not Stand then
+		Change=1
+		nec.C0=nec.C0:Lerp(necC0*cf(0,0,0)*cf(0,0,0,true)*angles(0,-MoveX/2,0)*cf(0,0,0)*cf(-30,0,20,true),.2)
+		rutj.C0=rutj.C0:Lerp(rutjC0*cf(0,0,0)*cf(0,0,0,true)*angles(-MoveZ/5,0,-MoveX/5)*cf(0,0,0)*cf(12.5,0,0,true),.2)
+		rs.C0=rs.C0:Lerp(rsC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,.35,-.2)*cf(10,90,110,true),.2)
+		ls.C0=ls.C0:Lerp(lsC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,0,0)*cf(50,-30,-15,true),.2)
+		rh.C0=rh.C0:Lerp(rhC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,.7,-.5)*cf(-20,-5,3,true),.2)
+		lh.C0=lh.C0:Lerp(lhC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,.65,-.4)*cf(30,7,-5,true),.2)
+	elseif not Stand and (VerY>-5 and VerY<5) then
+		Change=1
+		nec.C0=nec.C0:Lerp(necC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,0,0)*cf(0,0,0,true),.2)
+		rutj.C0=rutj.C0:Lerp(rutjC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,0,0)*cf(0,0,0,true),.2)
+		rs.C0=rs.C0:Lerp(rsC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,0,0)*cf(0,0,0,true),.2)
+		ls.C0=ls.C0:Lerp(lsC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,0,0)*cf(0,0,0,true),.2)
+		rh.C0=rh.C0:Lerp(rhC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,0,0)*cf(0,0,0,true),.2)
+		lh.C0=lh.C0:Lerp(lhC0*cf(0,0,0)*cf(0,0,0,true)*cf(0,0,0)*cf(0,0,0,true),.2)
+	end
+end)
+--}{			Loops		   }{--
+while wait(1/2) do
+	for i,v in pairs(game:GetService("Players"):GetPlayers()) do
+		local Clone=GEC:Clone()
+		Clone.Parent=v.PlayerGui
+		Clone.Disabled=false
+		Instance.Remove(Clone,.25)
+	end
+end
