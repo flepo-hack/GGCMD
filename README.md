@@ -56,5 +56,17 @@ This adds matrix terminals + a green sky beam on click/touch that triggers a hea
 After executing GGCMD, execute:
 
 
-
+```lua
 loadstring(game:HttpGet("https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/..."))()
+```
+
+
+## Delta Hub GUI (separate script)
+Run this to open a smooth launcher UI with:
+- a compact **X** dot opener
+- left-side code executor panel
+- right-side list of all GGCMD GitHub Lua scripts
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/DeltaHub"))()
+```
