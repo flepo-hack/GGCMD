@@ -160,8 +160,8 @@ makeCorner(editor, 10)
 local executeBtn = Instance.new("TextButton")
 executeBtn.Parent = executorFrame
 executeBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-executeBtn.Position = UDim2.new(0, 8, 1, -40)
-executeBtn.Size = UDim2.new(1, -16, 0, 30)
+executeBtn.Position = UDim2.new(0.5, 2, 1, -40)
+executeBtn.Size = UDim2.new(0.5, -10, 0, 30)
 executeBtn.Text = "Execute (Delta)"
 executeBtn.Font = Enum.Font.GothamBold
 executeBtn.TextSize = 13
@@ -169,6 +169,19 @@ executeBtn.TextColor3 = Color3.fromRGB(230, 230, 230)
 executeBtn.AutoButtonColor = false
 makeCorner(executeBtn, 10)
 makeStroke(executeBtn, Color3.fromRGB(125, 125, 125), 0.45)
+
+local clearBtn = Instance.new("TextButton")
+clearBtn.Parent = executorFrame
+clearBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+clearBtn.Position = UDim2.new(0, 8, 1, -40)
+clearBtn.Size = UDim2.new(0.5, -10, 0, 30)
+clearBtn.Text = "Clear"
+clearBtn.Font = Enum.Font.GothamBold
+clearBtn.TextSize = 13
+clearBtn.TextColor3 = Color3.fromRGB(230, 230, 230)
+clearBtn.AutoButtonColor = false
+makeCorner(clearBtn, 10)
+makeStroke(clearBtn, Color3.fromRGB(125, 125, 125), 0.45)
 
 local listTitle = Instance.new("TextLabel")
 listTitle.Parent = scriptsFrame
@@ -225,6 +238,11 @@ local function flash(btn)
 	tintIn.Completed:Wait()
 	tintOut:Play()
 end
+
+clearBtn.MouseButton1Click:Connect(function()
+	flash(clearBtn)
+	editor.Text = ""
+end)
 
 executeBtn.MouseButton1Click:Connect(function()
 	flash(executeBtn)
