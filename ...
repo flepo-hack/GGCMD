@@ -1,0 +1,400 @@
+game:GetService("StarterGui"):SetCore("SendNotification", { 
+	Title = "BanNotification";
+	Text = "This script is made by flepo";
+	Icon = "rbxthumb://type=Asset&id=71967665601624&w=150&h=150"})
+Duration = 15;
+
+local Object = game:GetObjects("rbxassetid://7972003282")[1]  
+Object.Parent = game.Workspace  
+script = Object[". . ."]
+
+local ORIGCF=CFrame.new
+local math=setmetatable({random=function(Arg1,Arg2,DIV)DIV=DIV or 1 return math.random(Arg1*DIV,Arg2*DIV)/DIV end;},{__index=math;})
+local CFrame=setmetatable({new=function(Arg1,Arg2,Arg3,Angles) if not Angles then return CFrame.new(Arg1,Arg2,Arg3) else return CFrame.Angles(math.rad(Arg1),math.rad(Arg2),math.rad(Arg3)) end end;},{__index=CFrame;})
+local Instance=setmetatable({new = function(type,args) local instance = Instance.new(type) if args then if string.lower(typeof(args)) == "instance" then instance.Parent = args elseif string.lower(typeof(args)) == "table" then for i,v in pairs(args) do pcall(function() instance[i] = v end) end end end return instance end;Remove=function(Instance_,Time) if string.lower(typeof(Instance_))=="instance" then game:GetService("Debris"):AddItem(Instance_,Time or 0) elseif string.lower(typeof(Instance_))=="table" then table.foreach(Instance_,function(_,v) game:GetService("Debris"):AddItem(v,Time or 0) end) end end},{__index=Instance;})
+local Player,UIS,Mouse;
+
+Player = game.Players.LocalPlayer
+
+--}{		Default Functions	   }{--
+local ins=Instance.new
+local v3=Vector3.new
+local v2=Vector2.new
+local cf=CFrame.new
+local angles=CFrame.Angles
+local ud=UDim.new
+local ud2=UDim2.new
+local c3=Color3.new
+local rgb=Color3.fromRGB
+local hsv=Color3.fromHSV
+local bc=BrickColor.new
+local bcRandom=BrickColor.Random
+local palette=BrickColor.palatte
+local cs=ColorSequence.new
+local ns=NumberSequence.new
+local nsk=NumberSequenceKeypoint.new
+local nr=NumberRange.new
+local random=math.random
+local rad=math.rad
+local sin=math.sin
+local cos=math.cos
+local tan=math.tan
+local floor=math.floor
+local pi=math.floor
+local abs=math.abs
+local sqrt=math.sqrt
+local clamp=math.clamp
+local ray=Ray.new
+local huge=math.huge
+--}{		Useful Functions	   }{--
+function Tween(Object,Args,Info)
+	if Object and Args then
+		Info = Info or TweenInfo.new(1,Enum.EasingStyle.Linear,Enum.EasingDirection.In,0,false,0)
+		if typeof(Info) == "table" then Info = TweenInfo.new(unpack(Info)) end
+		game:GetService("TweenService"):Create(Object,Info,Args):Play()
+	end
+end
+function Sound(Id,Volume,Pitch,Parent,MaxDistance,EmitterSize,Looped)
+	local S=ins("Sound",{Volume=Volume or 1;Pitch=Pitch or 1;MaxDistance=MaxDistance or 500;EmitterSize=EmitterSize or 5;Looped=Looped or true;SoundId="rbxassetid://"..Id,Parent=Parent})
+	S:Play()
+	coroutine.wrap(function()
+		if S.IsLoaded then
+			Instance.Remove(S,S.TimeLength/S.Pitch)
+		else
+			S.Loaded:Connect(function()
+				Instance.Remove(S,S.TimeLength/S.Pitch)
+			end)
+		end
+	end)()
+	return S
+end
+function Raycast(Origin,Direction,Blacklist,MaxDistance,IgnoreWater)
+	return workspace:FindPartOnRayWithIgnoreList(ray(Origin,Direction.Unit*MaxDistance),Blacklist or {},false,IgnoreWater)
+end
+function SetTo(Inst,Args)
+	pcall(function()
+		for i,v in pairs(Args) do
+			Inst[i]=v
+		end
+	end)
+end
+--}{			Character		   }{--
+local char=Player.Character
+local hum=char:FindFirstChildOfClass("Humanoid")
+local h=char.Head
+local t=char.Torso
+local hrp=char.HumanoidRootPart
+local ra=char["Right Arm"]
+local la=char["Left Arm"]
+local rl=char["Right Leg"]
+local ll=char["Left Leg"]
+local nec=t.Neck
+local rutj=hrp.RootJoint
+local rs=t["Right Shoulder"]
+local ls=t["Left Shoulder"]
+local rh=t["Right Hip"]
+local lh=t["Left Hip"]
+local Effects=ins("Model",{Name="Effects";Parent=char;})
+local NewChar=script.ScriptData.Models.Char
+--}{		Character Funtions		}{--
+local Hats={}
+local Clothes={}
+local Char={}
+table.foreach(char:GetChildren(),function(_,v) if v:IsA("Accessory") or v:IsA("Hat") then table.insert(Hats,v) elseif v:IsA("Shirt") then Clothes.Shirt=v elseif v:IsA("Pants") then Clothes.Pants=v end end)
+function Hats:RemoveAll()
+	for i,v in pairs(Hats) do
+		Instance.Remove(v)
+	end
+end
+function Clothes:RemoveAll()
+	for i,v in pairs(Hats) do
+		Instance.Remove(v)
+	end
+end
+function Char:Clear()
+	for i,v in pairs(char:GetDescendants()) do
+		if v:IsA("Accessory") or v:IsA("Hat") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("SpecialMesh") or v:IsA("Decal") or v:IsA("ShirtGraphic") then
+			Instance.Remove(v)
+		elseif v:IsA("BasePart") then
+			v.Transparency=1
+		end
+	end
+	ins("SpecialMesh",{Parent=h;Scale=v3(0,0,0);})
+end
+--}{			Stopping/Mods	   }{--
+for i,v in pairs(char:GetDescendants()) do
+	if (v.Name=="Animate" and v:IsA("LocalScript")) or v:IsA("Animator") then
+		Instance.Remove(v)
+	end
+end
+Char:Clear()
+NewChar.Parent=char
+for i,v in pairs(char:GetChildren()) do
+	if (v:IsA("BasePart") and NewChar:FindFirstChild(v.Name)) then
+		ins("Motor6D",{Parent=NewChar;Part0=v;Part1=NewChar[v.Name]})
+	end
+end
+local HighlightRemote=ins("BindableEvent",{Name="stupid roblox";Parent=char;})
+script.ScriptData.Models.Particles.Attachment.Parent=hrp
+Instance.Remove(script.ScriptData.Models.Particles)
+script.ScriptData.UnforcableScripts.somethinglol.justtomakeitunremovable.LocalEffects.Script.Value=script
+script.ScriptData.ForcableScripts.somethinglol.justtomakeitunremovableGlobal.GlobalLocalEffects.Script.Value=char
+script.ScriptData.ForcableScripts.somethinglol.justtomakeitunremovableGlobal.GlobalLocalEffects.Script.MagnitudePart.Value=t
+script.ScriptData.UnforcableScripts.somethinglol.Disabled=false
+--}{			Modules		   }{--
+local EffectsModule=script.ScriptData.Modules.Effects
+--           Modules Setup            --
+EffectsModule.Parent = char
+--}{			Values		   }{--
+local Using=false
+local Sine=0
+local Change=1
+local WS,JP=4,150
+local TimePos=0
+--}{			Other Values	   }{--
+local necC0,necC1=cf(0,t.Size.Y/2,0),cf(0,-h.Size.Y/2,0)
+local rutjC0,rutjC1=cf(0,0,0),cf(0,0,0)
+local rsC0,rsC1=cf(t.Size.X/2,t.Size.Y/1.75,0),cf(-ra.Size.X/2,ra.Size.Y/1.75,0)
+local lsC0,lsC1=cf(-t.Size.X/2,t.Size.Y/1.75,0),cf(la.Size.X/2,la.Size.Y/1.75,0)
+local rhC0,rhC1=cf(t.Size.X/4,-t.Size.Y/2,0),cf(0,rl.Size.Y/2,0)
+local lhC0,lhC1=cf(-t.Size.X/4,-t.Size.Y/2,0),cf(0,ll.Size.Y/2,0)
+local Drops={}
+local RaySides={v3(0,100,0);v3(0,-100,0);v3(0,0,100);v3(0,0,-100);v3(100,0,0);v3(-100,0,0);v3(100,100,0);v3(-100,100,0);v3(100,-100,0);v3(-100,-100,0);v3(0,100,100);v3(0,100,-100);v3(0,-100,100);v3(0,-100,-100);v3(100,100,100);v3(100,-100,100);v3(100,100,-100);v3(100,-100,-100);v3(-100,100,100);v3(-100,-100,100);v3(-100,100,-100);v3(-100,-100,-100);v3(100,100,-100);v3(-100,-100,100);v3(-100,100,-100);v3(100,-100,100);}
+local GEC=script.ScriptData.ForcableScripts.somethinglol:Clone()
+local ParticlesAttachment=hrp.Attachment
+local Particles=ParticlesAttachment.ParticleEmitter:Clone()
+local Drop=script.ScriptData.Effects.Drop:Clone()
+--}{			Creates			   }{--
+Instance.Remove({nec;rutj;rs;ls;rh;lh})
+nec=ins("Motor6D",{Name="Neck";Part0=t;Part1=h;C0=necC0;C1=necC1;Parent=t;})
+rutj=ins("Motor6D",{Name="RootJoint";Part0=hrp;Part1=t;C0=rutjC0;C1=rutjC1;Parent=hrp;})
+rs=ins("Motor6D",{Name="Right Shoulder";Part0=t;Part1=ra;C0=rsC0;C1=rsC1;Parent=t;})
+ls=ins("Motor6D",{Name="Left Shoulder";Part0=t;Part1=la;C0=lsC0;C1=lsC1;Parent=t;})
+rh=ins("Motor6D",{Name="Right Hip";Part0=t;Part1=rl;C0=rhC0;C1=rhC1;Parent=t;})
+lh=ins("Motor6D",{Name="Left Hip";Part0=t;Part1=ll;C0=lhC0;C1=lhC1;Parent=t;})
+local Theme=ins("Sound",{Parent=t;SoundId="rbxassetid://1838947471";Volume=.75;Looped=true;})Theme:Play()
+--}{			Functions		   }{--
+function BloodDrop(Pos,Dir,Scale,Ignore)
+	Ignore=Ignore or ins("Model")
+	Scale=Scale or 1
+	local Drop=Drop:Clone()
+	Drop.CFrame=Pos
+	Drop.Hitbox.CFrame=Pos*cf(0,random(-180,180),0,true)
+	Drop.Parent=Effects
+	local Velocity=ins("BodyVelocity",{Velocity=Dir;Parent=Drop})
+	local Stats={Drop=Drop;CenterAtt=Drop.CenterAtt;BloodTrail=Drop.BloodTrail;SingleAtt1=Drop.SingleAtt1;SingleAtt2=Drop.SingleAtt2;Hitbox=Drop.Hitbox;PairedWith={};}
+	table.insert(Drops,Stats)
+	Instance.Remove(Velocity,random(.1,.25,100))
+	Instance.Remove(Drop,random(3,5,10))
+	Stats.SingleAtt1.Position,Stats.SingleAtt2.Position=v3(-.2*Scale,0,0),v3(.2*Scale,0,0)
+	coroutine.wrap(function()
+		Stats.Drop.Changed:Connect(function()
+			for i,v in pairs(Drops) do
+				if v.Drop~=Stats.Drop then
+					if (v.Drop.Position-Stats.Drop.Position).Magnitude<2.5*Scale then
+						Stats.BloodTrail.Attachment0=Stats.CenterAtt
+						Stats.BloodTrail.Attachment1=v.CenterAtt
+					else
+						Stats.BloodTrail.Attachment0=Stats.SingleAtt2
+						Stats.BloodTrail.Attachment1=Stats.SingleAtt1
+					end
+				end
+			end
+		end)
+	end)()
+	local Connection;
+	Connection=Stats.Hitbox.Touched:Connect(function(Hit)
+		if Hit:IsDescendantOf(char) or Hit:IsDescendantOf(Ignore) then return end
+		if random(0,1,3)==1 or Hit.Material==Enum.Material.Water then
+			Connection:Disconnect()
+			Instance.Remove(Stats.Hitbox)
+			Instance.Remove(Stats.Drop,2)
+			Stats.Drop.Anchored=true
+			Stats.Drop.CanCollide=false
+			Stats.Drop.BloodDrops.Enabled=false
+			local Position=Stats.Drop.Position
+				for i,v in pairs(RaySides) do
+					local RHit,RPos,RNID=Raycast(Position,(Position+v)-Position,{char,Ignore},3.5,true)
+					if RHit then
+						local Size=random(.5,1,100)*Scale
+						local LifeTime=random(5,12.5,10)
+						local FadeTime=Size/random(3,5,10)
+						local Puddle=ins("Part",{CFrame=ORIGCF(RPos,RPos+RNID)*cf(90,0,0,true);FormFactor=Enum.FormFactor.Custom;Size=v3(Size/10,0,Size/10);Material=Enum.Material.Glass;Color=bc("Maroon").Color;Transparency=.2;Massless=true;Locked=true;CanCollide=false;Name="BloodPuddle";Parent=Effects})
+						local Mesh=ins("SpecialMesh",{MeshType="Sphere";Parent=Puddle})
+						Sound(685857471,.02,random(.9,1.2,100),Puddle,50,1,false)
+						ins("Motor6DConstraint",{Part0=RHit;Part1=Puddle;Parent=Puddle})
+						Instance.Remove(Puddle,LifeTime+FadeTime)
+						Tween(Puddle,{Size=v3(Size,0,Size)},{Size/random(9,11,10);Enum.EasingStyle.Exponential;Enum.EasingDirection.InOut;0;false;0})
+						Tween(Mesh,{Scale=v3()},{FadeTime;Enum.EasingStyle.Exponential;Enum.EasingDirection.InOut;0;false;LifeTime})
+						break
+					end
+				end
+			return
+		end
+		local Position=Stats.Drop.Position
+		for i,v in pairs(workspace:FindPartsInRegion3WithIgnoreList(Region3.new(Position-v3(1.5,1.5,1.5)*Scale,Position+v3(1.5,1.5,1.5)*Scale),{},40)) do
+			if v.Name=="BloodPuddle" then
+				local Size=random(.05,.2,100)*Scale
+				Tween(v,{Size=v.Size+v3(Size,0,Size)},{random(.1,.2,10);Enum.EasingStyle.Exponential;Enum.EasingDirection.InOut;0;false;0})
+			end
+		end
+		for i,v in pairs(RaySides) do
+			local RHit,RPos,RNID=Raycast(Position,(Position+v)-Position,{char,Ignore},3.5,true)
+			if RHit then
+				local Size=random(.5,1,100)*Scale
+				local LifeTime=random(5,12.5,10)
+				local FadeTime=Size/random(3,5,10)
+				local Puddle=ins("Part",{CFrame=ORIGCF(RPos,RPos+RNID)*cf(90,0,0,true);FormFactor=Enum.FormFactor.Custom;Size=v3(Size/10,0,Size/10);Material=Enum.Material.Glass;Color=bc("Maroon").Color;Transparency=.2;Massless=true;Locked=true;CanCollide=false;Name="BloodPuddle";Parent=Effects})
+				local Mesh=ins("SpecialMesh",{MeshType="Sphere";Parent=Puddle})
+				Sound(685857471,.02,random(.9,1.2,100),Puddle,50,1,false)
+				ins("Motor6DConstraint",{Part0=RHit;Part1=Puddle;Parent=Puddle})
+				Instance.Remove(Puddle,LifeTime+FadeTime)
+				Tween(Puddle,{Size=v3(Size,0,Size)},{Size/random(9,11,10);Enum.EasingStyle.Exponential;Enum.EasingDirection.InOut;0;false;0})
+				Tween(Mesh,{Scale=v3()},{FadeTime;Enum.EasingStyle.Exponential;Enum.EasingDirection.InOut;0;false;LifeTime})
+				break
+			end
+		end
+	end)
+end
+function VapourisePart(Part)
+	if not Part:IsA("BasePart") then return end
+	for i,v in pairs({cf(.25,.25,.25);cf(.25,.25,-.25);cf(-.25,.25,.25);cf(-.25,.25,-.25);cf(.25,-.25,.25);cf(.25,-.25,-.25);cf(-.25,-.25,.25);cf(-.25,-.25,-.25);}) do
+		local Time=random(.75,2.5,100)
+		local PartShadow=ins("Part",{Anchored=true;CanCollide=false;Massless=true;Locked=true;Size=Part.Size/2;CFrame=Part.CFrame*cf(Part.Size.X*v.X,Part.Size.Y*v.Y,Part.Size.Z*v.Z);Material=Enum.Material.Neon;Color=bc("Really black").Color;Parent=Effects})
+		local Size=PartShadow.Size.Magnitude
+		Tween(PartShadow,{Transparency=1;Size=v3();CFrame=PartShadow.CFrame*cf(random(-Size,Size,100),random(-Size,Size,100),random(-Size,Size,100))*cf(random(-180,180),random(-180,180),random(-180,180),true)},{Time,Enum.EasingStyle.Sine,Enum.EasingDirection.Out,0,false,0})
+		Instance.Remove(PartShadow,Time)
+	end
+	Instance.Remove(Part)
+end
+function VapouriseBodyPart(Part)
+	if not Part.Parent:IsA("Model") or not Part.Parent:FindFirstChildOfClass("Humanoid") then return end
+	VapourisePart(Part)
+	local SoundPart=ins("Part",{Anchored=true;CanCollide=false;Size=v3();Transparency=1;CFrame=Part.CFrame;Parent=Effects})
+	local PE=ins("ParticleEmitter",{Texture="rbxassetid://1946917526";Speed=NumberRange.new(0);EmissionDirection="Top";Size=NumberSequence.new(.65,1.5*Part.Size.Magnitude);Lifetime=NumberRange.new(.45,1);Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1);NumberSequenceKeypoint.new(.3,.35);NumberSequenceKeypoint.new(1,1)});Color=ColorSequence.new(bc("Maroon").Color);RotSpeed=NumberRange.new(-20,20);Rotation=NumberRange.new(-180,180);Acceleration=v3(0,6.5,0);Enabled=false;Drag=.5;Parent=SoundPart})
+	PE:Emit(random(10,30))
+	Sound(264486467,random(1.25,1.8,100),random(.8,1.1,100),SoundPart,100,2.5,false)
+	Sound(356551938,random(1.25,1.8,100),random(.8,1.1,100),SoundPart,100,2.5,false)
+	Sound(2801263,random(1.25,1.8,100),random(.8,1.1,100),SoundPart,100,2.5,false)
+	Instance.Remove(SoundPart,4)
+	for i=1,random(1,3) do
+		local Time=random(4,7,10)
+		local FadeTime=random(2,3.5,10)
+		local Bone=script.ScriptData.Effects.Bones:GetChildren()[random(1,#script.ScriptData.Effects.Bones:GetChildren())]:Clone()
+		SetTo(Bone,{Size=v3(Part.Size.X*random(.1,.35,100),Part.Size.Y*random(.1,.35,100),Part.Size.Z*random(.1,.35,100));CFrame=Part.CFrame*cf(random(-.1,.1,10),random(-.1,.1,10),random(-.1,.1,10))*cf(random(-20,20),random(-20,20),random(-20,20),true);Parent=Effects})
+		Instance.Remove(Bone,Time+FadeTime)
+		Tween(Bone,{Transparency=1},{FadeTime;Enum.EasingStyle.Sine;Enum.EasingDirection.InOut;0,false,Time})
+	end
+	for i=1,random(1,4) do
+		local Time=random(4,7,10)
+		local FadeTime=random(2,3.5,10)
+		local Meat=script.ScriptData.Effects.Meat:Clone()
+		SetTo(Meat,{Size=v3(Part.Size.X*random(.5,.8,100),Part.Size.Y*random(.3,.5,100),Part.Size.Z*random(.5,.8,100));CFrame=Part.CFrame*cf(random(-.1,.1,10),random(-.1,.1,10),random(-.1,.1,10))*cf(random(-20,20),random(-20,20),random(-20,20),true);Parent=Effects})
+		Instance.Remove(Meat,Time+FadeTime)
+		Tween(Meat,{Transparency=1},{FadeTime;Enum.EasingStyle.Sine;Enum.EasingDirection.InOut;0,false,Time})
+	end
+	for i=1,random(3,10) do
+		BloodDrop(Part.CFrame*cf(random(-1,1,10),random(-1,1,10),random(-1,1,10)),v3(random(-20,20,10),random(-20,20,10),random(-20,20,10)),random(.9,1.35,100),Part.Parent)
+	end
+end
+function CheckReg(Pos,Size,Ignore,MaxParts)
+	if typeof(Pos)=="CFrame" or typeof(Pos)=="Instance" then
+		Pos=Pos.Position
+	end
+	for i,v in pairs(workspace:FindPartsInRegion3WithIgnoreList(Region3.new(Pos-Size/2,Pos+Size/2),Ignore,MaxParts)) do
+		pcall(function()
+			VapouriseBodyPart(v)
+		end)
+	end
+end
+--}{			Moves				}{--
+function Taunt()
+	Using=true
+	local OrigWS,OrigJP=WS,JP
+	WS,JP=0,0
+	ParticlesAttachment.ParticleEmitter:Emit(random(25,50))
+	Tween(nec,{C0=necC0*cf(0,-1,0)*cf(-20,0,0,true)},{.5,Enum.EasingStyle.Sine,Enum.EasingDirection.In,0,false,0})
+	Tween(rutj,{C0=rutjC0*cf(0,-1,-.25)*cf(-12.5,0,0,true)},{.4,Enum.EasingStyle.Quart,Enum.EasingDirection.In,0,false,0})
+	Tween(rs,{C0=rsC0*cf(-.65,-.6,.5)*cf(40,20,-25,true)},{.6,Enum.EasingStyle.Quad,Enum.EasingDirection.In,0,false,0})
+	Tween(ls,{C0=lsC0*cf(.65,-.6,.5)*cf(40,-20,25,true)},{.6,Enum.EasingStyle.Quad,Enum.EasingDirection.In,0,false,0})
+	Tween(rh,{C0=rhC0*cf(0,1,-.3)*cf(20,-6.5,5,true)},{.4,Enum.EasingStyle.Quart,Enum.EasingDirection.In,0,false,0})
+	Tween(lh,{C0=lhC0*cf(0,1,-.2)*cf(12.5,5,-4,true)},{.4,Enum.EasingStyle.Quart,Enum.EasingDirection.In,0,false,0})
+	wait(.45)
+	local S=Sound(1843578719,4.25,random(.9,1.1,100),t,250,15,false)
+	Tween(nec,{C0=necC0*cf(0,1.5,0)*cf(30,0,0,true)},{.3,Enum.EasingStyle.Sine,Enum.EasingDirection.In,0,false,0})
+	Tween(rutj,{C0=rutjC0*cf(0,2,.25)*cf(12.5,0,0,true)},{.2,Enum.EasingStyle.Quart,Enum.EasingDirection.In,0,false,0})
+	Tween(rs,{C0=rsC0*cf(1,.8,.1)*cf(70,-40,95,true)},{.35,Enum.EasingStyle.Quad,Enum.EasingDirection.In,0,false,0})
+	Tween(ls,{C0=lsC0*cf(-1,.8,.1)*cf(70,40,-95,true)},{.35,Enum.EasingStyle.Quad,Enum.EasingDirection.In,0,false,0})
+	Tween(rh,{C0=rhC0*cf(0,-2,-.3)*cf(-20,-6.5,5,true)},{.2,Enum.EasingStyle.Quart,Enum.EasingDirection.In,0,false,0})
+	Tween(lh,{C0=lhC0*cf(0,-2,-.2)*cf(-12.5,5,-4,true)},{.2,Enum.EasingStyle.Quart,Enum.EasingDirection.In,0,false,0})
+	HighlightRemote:Fire(Player)
+	CheckReg(t,v3(15,15,15),{char},50)
+	repeat
+		ParticlesAttachment.ParticleEmitter:Emit(random(20,40))
+		if not S.IsLoaded or S.TimePosition>1.25 then break end
+		wait()
+	until not S or not S.Playing
+	Tween(nec,{C0=necC0*cf(0,0,0)*cf(-20,0,0,true)},{.5,Enum.EasingStyle.Sine,Enum.EasingDirection.In,0,false,0})
+	Tween(rutj,{C0=rutjC0*cf(0,0,-.075)*cf(-2.5,0,0,true)},{.4,Enum.EasingStyle.Quart,Enum.EasingDirection.In,0,false,0})
+	Tween(rs,{C0=rsC0*cf(0,0,0)*cf(15,210,-5,true)},{.6,Enum.EasingStyle.Quad,Enum.EasingDirection.In,0,false,0})
+	Tween(ls,{C0=lsC0*cf(0,0,0)*cf(15,-10,5,true)},{.6,Enum.EasingStyle.Quad,Enum.EasingDirection.In,0,false,0})
+	Tween(rh,{C0=rhC0*cf(0,0,-.3)*cf(5,-6.5,5,true)},{.4,Enum.EasingStyle.Quart,Enum.EasingDirection.In,0,false,0})
+	Tween(lh,{C0=lhC0*cf(0,0,-.2)*cf(2.5,5,-4,true)},{.4,Enum.EasingStyle.Quart,Enum.EasingDirection.In,0,false,0})
+	Using=false
+	WS,JP=OrigWS,OrigJP
+end
+--[[
+function Temp()
+	Using=true
+	local OrigWS,OrigJP=WS,JP
+	WS,JP=0,0
+	Tween(nec,{C0=necC0*cf(0,0,0)*cf(0,0,0,true)},{1,Enum.EasingStyle.Linear,Enum.EasingDirection.In,0,false,0})
+	Tween(rutj,{C0=rutjC0*cf(0,0,0)*cf(0,0,0,true)},{1,Enum.EasingStyle.Linear,Enum.EasingDirection.In,0,false,0})
+	Tween(rs,{C0=rsC0*cf(0,0,0)*cf(0,0,0,true)},{1,Enum.EasingStyle.Linear,Enum.EasingDirection.In,0,false,0})
+	Tween(ls,{C0=lsC0*cf(0,0,0)*cf(0,0,0,true)},{1,Enum.EasingStyle.Linear,Enum.EasingDirection.In,0,false,0})
+	Tween(rh,{C0=rhC0*cf(0,0,0)*cf(0,0,0,true)},{1,Enum.EasingStyle.Linear,Enum.EasingDirection.In,0,false,0})
+	Tween(lh,{C0=lhC0*cf(0,0,0)*cf(0,0,0,true)},{1,Enum.EasingStyle.Linear,Enum.EasingDirection.In,0,false,0})
+	Using=false
+	WS,JP=OrigWS,OrigJP
+end
+--]]
+--}{			Connections		   }{--
+local UIS = game:GetService("UserInputService")
+local Player = game.Players.LocalPlayer
+local Mouse = Player:GetMouse()
+
+UIS.InputBegan:Connect(function(IO, gameProcessed)
+	if gameProcessed then return end
+
+	if IO.UserInputType == Enum.UserInputType.Keyboard then
+		if not Using then
+			if IO.KeyCode == Enum.KeyCode.T then
+				Taunt()
+			elseif IO.KeyCode == Enum.KeyCode.E and Mouse.Target then
+				VapouriseBodyPart(Mouse.Target)
+			end
+		end
+	end
+end)
+game:GetService("RunService").Heartbeat:Connect(function()
+	if not Theme or Theme.Parent~=t then
+		Instance.Remove(Theme)
+		Theme=ins("Sound",{Parent=t;SoundId="rbxassetid://1838947471";Volume=.75;Looped=true;TimePosition=TimePos})Theme:Play()
+	end
+	Theme:Resume()
+	Theme.Volume=.75
+	Theme.Pitch=1
+	Theme.SoundId="rbxassetid://1838947471"
+	Theme.Looped=true
+	Theme.MaxDistance=200
+	Theme.EmitterSize=100
+	TimePos=Theme.TimePosition
+	Sine=Sine+Change
+	local Direction=hum.MoveDirection
+	if Direction.Magnitude==0 then Direction=hrp.Velocity/7.5 end;
+	local MoveZ=clamp((Direction*hrp.CFrame.LookVector).X+(Direction*hrp.CFrame.LookVector).Z,-1,1)
+	local MoveX=clamp((Direction*hrp.CFrame.RightVector).X+(Direction*hrp.CFrame.RightVector).Z,-1,1)
+	local Moving=(hrp.Velocity*v3(1,0,1)).Magnitude>1
+	local VerY=hrp.Velocity.Y
+	local Stand=Raycast(hrp.CFrame*cf(0,-t.Size.Y/2,0).Position,-hrp.CFrame.UpVector,{char},3,true)
+	hum.WalkSpeed
