@@ -56,5 +56,5 @@ This adds matrix terminals + a green sky beam on click/touch that triggers a hea
 After executing GGCMD, execute:
 
 ```lua
-lua
+
 loadstring(game:HttpGet("https://raw.githubusercontent.com/flepo-hack/GGCMD/refs/heads/main/..."))()
