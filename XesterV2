@@ -1,0 +1,453 @@
+-- Xester V2 Addon for GGCMD
+-- Execute only after GGCMD has already been executed.
+
+local Players = game:GetService("Players")
+local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local TextChatService = game:GetService("TextChatService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local localPlayer = Players.LocalPlayer
+local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui") or localPlayer:WaitForChild("PlayerGui", 10)
+local ggcmdGui = playerGui and playerGui:FindFirstChild("GGCMD")
+local genv = (getgenv and getgenv()) or _G
+
+if not ggcmdGui then
+	warn("[Xester V2] GGCMD not found. Execute GGCMD first.")
+	return
+end
+
+if not genv.runCommand then
+	warn("[Xester V2] GGCMD runCommand missing (getgenv().runCommand). Execute GGCMD first.")
+	return
+end
+
+local TAG = "GGCMD_XESTER_V2"
+local PREFIX = ";"
+
+local state = {
+	tools = {},
+	effects = {},
+	connections = {},
+	form = 1,
+	abilityUsedThisLife = false
+}
+
+local forms = {
+	{
+		name = "Xester V2",
+		bodyColor = BrickColor.new("Institutional white"),
+		accent = Color3.fromRGB(36, 36, 36),
+		hatMesh = "rbxassetid://149299916",
+		hatTexture = "rbxassetid://149300215"
+	},
+	{
+		name = "Xester V2: Crimson",
+		bodyColor = BrickColor.new("Really red"),
+		accent = Color3.fromRGB(15, 15, 15),
+		hatMesh = "rbxassetid://149299916",
+		hatTexture = "rbxassetid://149300215"
+	}
+}
+
+local function notify(title, text, duration)
+	pcall(function()
+		game:GetService("StarterGui"):SetCore("SendNotification", {
+			Title = title,
+			Text = text,
+			Duration = duration or 3
+		})
+	end)
+end
+
+local function sendGGCMDCommand(raw)
+	local msg = PREFIX .. raw
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		local channel = TextChatService.TextChannels and TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+		if channel then
+			pcall(function()
+				channel:SendAsync(msg)
+			end)
+			return
+		end
+	end
+
+	local legacy = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+	local say = legacy and legacy:FindFirstChild("SayMessageRequest")
+	if say then
+		pcall(function()
+			say:FireServer(msg, "All")
+		end)
+	end
+end
+
+local function getCharacter()
+	local char = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	return char, hum, hrp
+end
+
+local function track(inst, life)
+	table.insert(state.effects, inst)
+	if life and life > 0 then
+		Debris:AddItem(inst, life)
+	end
+	return inst
+end
+
+local function clearTools()
+	for _, tool in ipairs(state.tools) do
+		if tool and tool.Parent then
+			tool:Destroy()
+		end
+	end
+	table.clear(state.tools)
+end
+
+local function clearEffects()
+	for _, inst in ipairs(state.effects) do
+		if inst and inst.Parent then
+			inst:Destroy()
+		end
+	end
+	table.clear(state.effects)
+end
+
+local function disconnectAll()
+	for _, con in ipairs(state.connections) do
+		if con and con.Disconnect then
+			con:Disconnect()
+		end
+	end
+	table.clear(state.connections)
+end
+
+local function nearestTarget(maxDistance)
+	local _, _, myRoot = getCharacter()
+	if not myRoot then return nil end
+	local mouse = localPlayer:GetMouse()
+	local aimPos = mouse.Hit and mouse.Hit.Position or (myRoot.Position + myRoot.CFrame.LookVector * maxDistance)
+	local best, bestDistance = nil, math.huge
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr == localPlayer then continue end
+		local char = plr.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		if hum and hum.Health > 0 and root then
+			local d = (root.Position - aimPos).Magnitude
+			if d < bestDistance and (root.Position - myRoot.Position).Magnitude <= maxDistance then
+				best = plr
+				bestDistance = d
+			end
+		end
+	end
+	return best
+end
+
+local function killTarget(target)
+	if not target then return end
+	pcall(function()
+		genv.runCommand("kill", {target})
+	end)
+end
+
+local function applyFormLook(formIndex)
+	state.form = ((formIndex - 1) % #forms) + 1
+	local form = forms[state.form]
+	local char, _, _ = getCharacter()
+	if not char then return end
+
+	sendGGCMDCommand("blockhats me")
+	sendGGCMDCommand("bighead me")
+
+	for _, part in ipairs(char:GetChildren()) do
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+			part.Color = form.accent
+		end
+	end
+
+	local bodyColors = char:FindFirstChildOfClass("BodyColors")
+	if bodyColors then
+		bodyColors.HeadColor = form.bodyColor
+		bodyColors.LeftArmColor = form.bodyColor
+		bodyColors.RightArmColor = form.bodyColor
+		bodyColors.TorsoColor = form.bodyColor
+		bodyColors.LeftLegColor = form.bodyColor
+		bodyColors.RightLegColor = form.bodyColor
+	end
+
+	local hat = Instance.new("Accessory")
+	hat.Name = TAG .. "_Hat"
+	local handle = Instance.new("Part")
+	handle.Name = "Handle"
+	handle.Size = Vector3.new(1, 1, 1)
+	handle.CanCollide = false
+	handle.Parent = hat
+
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.FileMesh
+	mesh.MeshId = form.hatMesh
+	mesh.TextureId = form.hatTexture
+	mesh.Scale = Vector3.new(1.5, 1.5, 1.5)
+	mesh.Parent = handle
+
+	local att = Instance.new("Attachment")
+	att.Name = "HatAttachment"
+	att.Parent = handle
+
+	for _, v in ipairs(char:GetChildren()) do
+		if v:IsA("Accessory") and v.Name == TAG .. "_Hat" then
+			v:Destroy()
+		end
+	end
+	hat.Parent = char
+
+	notify("Xester Form", form.name .. " equipped", 2)
+end
+
+local function createFloatingCards()
+	local char, _, hrp = getCharacter()
+	if not char or not hrp then return end
+	for i = 1, 8 do
+		local angle = (math.pi * 2) * (i / 8)
+		local card = track(Instance.new("Part"))
+		card.Name = TAG .. "_Card"
+		card.Anchored = true
+		card.CanCollide = false
+		card.Material = Enum.Material.Neon
+		card.Color = Color3.fromRGB(255, 255, 255)
+		card.Size = Vector3.new(0.2, 1.5, 1)
+		card.Parent = workspace
+
+		local txt = Instance.new("SurfaceGui")
+		txt.Face = Enum.NormalId.Front
+		txt.Parent = card
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Text = tostring(i)
+		label.TextScaled = true
+		label.TextColor3 = Color3.fromRGB(20, 20, 20)
+		label.Font = Enum.Font.GothamBlack
+		label.Parent = txt
+
+		table.insert(state.connections, RunService.RenderStepped:Connect(function()
+			if not hrp.Parent then return end
+			local t = tick() * 1.7
+			local offset = Vector3.new(math.cos(t + angle) * 3, 2 + math.sin(t * 2 + angle) * 0.7, math.sin(t + angle) * 3)
+			card.CFrame = CFrame.new(hrp.Position + offset, hrp.Position)
+		end))
+	end
+end
+
+local function blackHoleAbility()
+	local _, _, hrp = getCharacter()
+	if not hrp then return end
+	local target = nearestTarget(35)
+	if not target then
+		notify("Card Black Hole", "No target near cursor", 2)
+		return
+	end
+	local tRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+	if not tRoot then return end
+
+	local vortex = track(Instance.new("Part"), 2.5)
+	vortex.Anchored = true
+	vortex.CanCollide = false
+	vortex.Shape = Enum.PartType.Cylinder
+	vortex.Material = Enum.Material.Neon
+	vortex.Color = Color3.fromRGB(25, 25, 25)
+	vortex.Size = Vector3.new(0.4, 14, 14)
+	vortex.CFrame = CFrame.new(tRoot.Position) * CFrame.Angles(0, 0, math.rad(90))
+	vortex.Parent = workspace
+
+	local tween = TweenService:Create(vortex, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = Vector3.new(0.4, 18, 18)})
+	tween:Play()
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr == localPlayer then continue end
+		local root = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+		if root and (root.Position - tRoot.Position).Magnitude <= 16 then
+			root.AssemblyLinearVelocity = (tRoot.Position - root.Position).Unit * 85 + Vector3.new(0, 35, 0)
+			killTarget(plr)
+		end
+	end
+end
+
+local function superiorLightning()
+	local target = nearestTarget(55)
+	if not target then
+		notify("Superior Lightning", "No target on cursor", 2)
+		return
+	end
+	local tRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+	if not tRoot then return end
+
+	for i = 1, 3 do
+		local bolt = track(Instance.new("Part"), 0.35)
+		bolt.Anchored = true
+		bolt.CanCollide = false
+		bolt.Material = Enum.Material.Neon
+		bolt.Color = Color3.fromRGB(255, 255, 90)
+		bolt.Size = Vector3.new(0.3, 14, 0.3)
+		bolt.CFrame = CFrame.new(tRoot.Position + Vector3.new((i - 2) * 2, 7, 0))
+		bolt.Parent = workspace
+	end
+
+	killTarget(target)
+	notify("Superior Lightning", "3x lightning landed (GGCMD kill)", 1.8)
+end
+
+local function superiorBomb()
+	local _, _, myRoot = getCharacter()
+	if not myRoot then return end
+	local hit = false
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr == localPlayer then continue end
+		local root = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+		if root and (root.Position - myRoot.Position).Magnitude <= 25 then
+			root.CFrame = myRoot.CFrame * CFrame.new(math.random(-3, 3), 0, math.random(-3, 3))
+			killTarget(plr)
+			hit = true
+		end
+	end
+
+	local blast = track(Instance.new("Explosion"), 0.2)
+	blast.Position = myRoot.Position
+	blast.BlastRadius = 12
+	blast.BlastPressure = 0
+	blast.DestroyJointRadiusPercent = 0
+	blast.Parent = workspace
+
+	if not hit then
+		notify("Superior Bomb", "No players in pull range", 2)
+	end
+end
+
+local function spawnMinionAbility()
+	if state.abilityUsedThisLife then
+		notify("Ability", "Usable once per death", 2)
+		return
+	end
+	state.abilityUsedThisLife = true
+
+	local _, _, myRoot = getCharacter()
+	if not myRoot then return end
+	local minion = track(Instance.new("Model"))
+	minion.Name = TAG .. "_Minion"
+	local body = Instance.new("Part")
+	body.Name = "HumanoidRootPart"
+	body.Size = Vector3.new(2, 2, 1)
+	body.Position = myRoot.Position + myRoot.CFrame.LookVector * 6
+	body.Material = Enum.Material.Metal
+	body.Color = Color3.fromRGB(80, 80, 80)
+	body.Parent = minion
+
+	local hum = Instance.new("Humanoid")
+	hum.Parent = minion
+	minion.PrimaryPart = body
+	minion.Parent = workspace
+
+	local hammer = Instance.new("Part")
+	hammer.Name = "Hammer"
+	hammer.Size = Vector3.new(1, 3, 1)
+	hammer.Material = Enum.Material.Metal
+	hammer.Color = Color3.fromRGB(30, 30, 30)
+	hammer.Parent = minion
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = body
+	weld.Part1 = hammer
+	weld.Parent = hammer
+	hammer.CFrame = body.CFrame * CFrame.new(1.5, 0, 0)
+
+	task.spawn(function()
+		local deadline = tick() + 18
+		while minion.Parent and tick() < deadline do
+			local target = nearestTarget(80)
+			if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+				local tRoot = target.Character.HumanoidRootPart
+				body.CFrame = CFrame.new(body.Position:Lerp(tRoot.Position, 0.16), tRoot.Position)
+				if (body.Position - tRoot.Position).Magnitude < 4 then
+					killTarget(target)
+				end
+			end
+			task.wait(0.1)
+		end
+		if minion and minion.Parent then
+			minion:Destroy()
+		end
+	end)
+end
+
+local function makeTool(name, color, onActivated)
+	local backpack = localPlayer:FindFirstChildOfClass("Backpack") or localPlayer:WaitForChild("Backpack")
+	local tool = Instance.new("Tool")
+	tool.Name = name
+	tool.RequiresHandle = true
+	tool.CanBeDropped = false
+	tool.ToolTip = "Xester V2"
+
+	local handle = Instance.new("Part")
+	handle.Name = "Handle"
+	handle.Size = Vector3.new(1, 1.2, 0.2)
+	handle.CanCollide = false
+	handle.Color = color
+	handle.Material = Enum.Material.Neon
+	handle.Parent = tool
+
+	tool.Activated:Connect(onActivated)
+	tool.Parent = backpack
+	table.insert(state.tools, tool)
+	return tool
+end
+
+local function setupLifeReset()
+	local function hook(char)
+		state.abilityUsedThisLife = false
+		local hum = char:FindFirstChildOfClass("Humanoid") or char:WaitForChild("Humanoid", 8)
+		if hum then
+			table.insert(state.connections, hum.Died:Connect(function()
+				state.abilityUsedThisLife = false
+			end))
+		end
+	end
+
+	if localPlayer.Character then
+		hook(localPlayer.Character)
+	end
+	table.insert(state.connections, localPlayer.CharacterAdded:Connect(hook))
+end
+
+local function onInputBegan(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.Y then
+		superiorLightning()
+	elseif input.KeyCode == Enum.KeyCode.E then
+		spawnMinionAbility()
+	end
+end
+
+local function setup()
+	clearTools()
+	clearEffects()
+	disconnectAll()
+
+	setupLifeReset()
+	createFloatingCards()
+	applyFormLook(1)
+
+	makeTool("Card Black Hole", Color3.fromRGB(15, 15, 15), blackHoleAbility)
+	makeTool("Superior Bomb", Color3.fromRGB(255, 125, 20), superiorBomb)
+	makeTool("Form Switch", Color3.fromRGB(200, 50, 50), function()
+		applyFormLook(state.form + 1)
+	end)
+
+	table.insert(state.connections, UserInputService.InputBegan:Connect(onInputBegan))
+	notify("Xester V2", "Loaded: Card Black Hole, Superior Bomb, [Y] Lightning, [E] Minion", 6)
+end
+
+setup()
